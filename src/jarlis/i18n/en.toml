@@ -1,0 +1,253 @@
+# JARLIS: canonical English strings.
+# All other language files use this as the fallback for missing keys.
+# Keys use dotted-path notation (notify.stuck.subject) for readability.
+
+# Email sign-off keywords used by the body-signature detector.
+# Lower-cased, no trailing punctuation. The detector recognizes these as
+# the start of a signature block; the next non-empty line is taken as the
+# writer's name. Adding a new language? Add the same key to its TOML and
+# JARLIS picks it up automatically (no code change).
+[signature]
+closings = [
+  "best",
+  "best regards",
+  "kind regards",
+  "sincerely",
+  "cheers",
+  "thanks",
+  "thank you",
+  "regards",
+  "warmly",
+  "cordially",
+]
+
+# ---------- Notifications (subject + body of alert/test emails) ----------
+
+[drafts.notification]
+subject_prefix              = "[{org}] Draft for"
+greeting                    = "Hi {name},"
+intro                       = "JARLIS drafted a reply for an email received at {from_address}. Review the proposal below; when you're ready, hit Reply (the Reply-To header is set to the original sender) or send it from wherever you normally reply."
+label_original              = "Original email"
+label_draft                 = "Proposed draft"
+label_reason                = "Reason"
+label_attachments           = "Attachments"
+label_summary               = "Summary"
+label_translation_original  = "Original translated to {target_lang}"
+label_translation_draft     = "Proposed draft translated to {target_lang}"
+local_path                  = "Local copy: {path}"
+label_meeting               = "Online meeting detected:"
+meeting_when_detected       = "Proposed date/time: {when}"
+meeting_when_unknown        = "Date/time not detected — fill in manually in Google Calendar"
+calendar_link               = "Add to Google Calendar: {url}"
+signoff                     = "JARLIS"
+
+[attention.notification]
+subject_prefix              = "[{org}] Needs attention"
+intro                       = "JARLIS spotted an email that needs your attention on {from_address}. No draft was prepared; here is the gist. Click Reply (the Reply-To header points at the original sender) if you want to respond."
+
+[notify.test]
+subject = "[{org}] JARLIS test"
+body = """Hi {name},
+
+This is a JARLIS test message: your notification email is wired up correctly.
+
+, JARLIS"""
+
+[notify.stuck]
+subject = "[{org}] ALERT: pipeline stuck ({count} unprocessed)"
+body = """Hi {name},
+
+The JARLIS pipeline appears to be stuck: {count} email(s) sat unprocessed across {threshold} consecutive runs.
+
+Recent backlog history: {history}
+
+Pipeline log:
+  {log_path}
+
+, JARLIS"""
+
+# ---------- Recap email --------------------------------------------------
+
+[recap]
+subject_daily    = "[{org}] JARLIS recap: {date}"
+subject_period   = "[{org}] JARLIS recap: {start} → {end}"
+no_activity      = "No activity in this period."
+greeting         = "Hi {name},"
+signoff          = ", JARLIS"
+window_summary   = "Period: {start} → {end} ({days} day(s))"
+no_reason        = "(no reason recorded)"
+drafts_location  = "Drafts available in: {path}"
+
+[recap.section]
+drafted          = "✏ Drafts pending your review ({count})"
+flagged          = "📌 Flagged for attention ({count})"
+ignored          = "🔇 Silenced topics ({count})"
+low_priority     = "·  Low priority ({count})"
+not_addressed    = "·  Group / list mail you weren't directly addressed on ({count})"
+old_drafts       = "⚠ Old drafts (>{days} days)"
+
+[recap.block]
+header              = "--- {number} ---"
+from                = "From    : {name} <{email}>"
+from_multi          = "From    : {names} ({count} emails in this thread)"
+subject             = "Subject : {subject}"
+date                = "Date    : {date}"
+reason              = "Reason  : {reason}"
+reasons_header      = "Reasons : ({count} emails)"
+reason_numbered     = "  {number}. {when} — {sender}: {reason}"
+folder              = "Folder  : {path}"
+attachments_header  = "Attachments ({count}):"
+attachment_line     = "  → {path}"
+urls_header         = "Links ({count}):"
+url_line            = "  → {url}"
+url_more            = "  … and {count} more link(s)"
+
+[recap.line]
+ignored_topic_header = "  📚 {topic} ({count} email(s))"
+ignored_entry        = "    • {subject} — from {sender}: {reason}"
+ignored_more         = "    … and {count} more"
+folder               = "      → {path}"
+old_draft            = "  ⚠ {date}: to {recipient}: {subject}"
+
+[recap.thread]
+header         = "💬 Thread: {subject} ({count} emails)"
+folders_intro  = "   {count} email(s) in this thread:"
+folder_line    = "     → {path}"
+
+[classify.rule]
+spam_sender    = "sender ({sender}) matches spam markers"
+spam_subject   = "subject contains spam marker: {subject}"
+ignored_topic  = "matched ignored topic: {topic}"
+no_backend     = "no AI backend available; deferred to user"
+
+# ---------- Cleanup recap (weekly) ---------------------------------------
+
+[cleanup.recap]
+subject = "[{org}] JARLIS cleanup: week of {date}"
+header  = "Weekly cleanup pass:"
+
+[cleanup.recap.section]
+people_archived  = "Contacts archived (no activity in {days} days, {count})"
+topics_archived  = "Topics archived (no matches in {days} days, {count})"
+emails_deleted   = "Old email bodies deleted (older than {days} days, {count})"
+drafts_pending   = "Drafts older than {days} days awaiting your decision ({count})"
+
+# ---------- CLI / setup wizard prompts ----------------------------------
+
+[setup]
+title                          = "JARLIS interactive setup"
+intro                          = "This collects everything needed to run JARLIS.\nYour IMAP/SMTP password goes straight to your OS keychain;\nit is NEVER written to a file or shared with any AI agent."
+
+no_keyring_warning             = "⚠ The `keyring` library is not installed."
+no_keyring_needed              = "JARLIS needs it to store your password securely."
+no_keyring_install             = "Install with:  pip install keyring"
+continue_no_keyring            = "Continue anyway (password will need to be re-entered later)?"
+
+section_about_you              = "--- About you ---"
+section_organization           = "--- Organization ---"
+section_imap                   = "--- IMAP (incoming email) ---"
+section_smtp                   = "--- SMTP (outgoing notifications) ---"
+section_notifications          = "--- Notifications ---"
+section_ai                     = "--- AI backend ---"
+section_bootstrap              = "--- Bootstrap ---"
+section_recipient_filter       = "--- Recipient filter ---"
+section_shared_addresses       = "--- Shared mailbox addresses ---"
+section_recap_frequency        = "--- Recap frequency ---"
+section_summary                = "--- Summary ---"
+
+ask_firstname                  = "First name"
+ask_lastname                   = "Last name"
+ask_firstname_alt              = "Optional non-Latin first name (skip if N/A)"
+ask_lastname_alt               = "Optional non-Latin last name (skip if N/A)"
+source_vs_notify_explainer     = "JARLIS reads from one mailbox (the SOURCE) and sends notifications to\nanother. They can be the same address, but most users keep them separate\n(e.g. SOURCE = work email, NOTIFICATIONS = personal email). The source\naddress goes here; the notification address is asked further down."
+ask_source_email               = "Source email address (the mailbox JARLIS will read FROM)"
+languages_explainer            = "Languages you read in email, NATIVE FIRST.\nYour first language is what JARLIS uses to talk to you (recap, alerts).\nDrafts adapt to the language of the incoming email regardless of this."
+ask_languages                  = "Languages (comma-separated; e.g. 'fr' for French native)"
+ask_aliases                    = "Other addresses that are also you (comma-separated, optional)"
+
+ask_org_name                   = "Organization name (or blank if personal)"
+ask_org_url                    = "Organization website (optional)"
+
+imap_provider_detected         = "Detected provider for {email}: defaults pre-filled"
+imap_provider_note             = "Note: {hint}"
+imap_provider_unknown          = "Custom / unknown provider, please enter the IMAP+SMTP details manually."
+imap_provider_examples         = "Examples: imap.gmail.com / outlook.office365.com / imap.fastmail.com / mail.your-host.tld"
+imap_provider_doc_hint         = "See PROVIDERS.md in this repo for step-by-step app-password instructions for Gmail, Outlook/Microsoft 365, Fastmail, iCloud, Yahoo, ProtonMail."
+ask_imap_server                = "IMAP server"
+ask_imap_port                  = "IMAP port"
+ask_imap_username              = "IMAP username"
+imap_app_password_hint         = "Many providers (Gmail, Fastmail, iCloud, Outlook with 2FA, ...) require an\nAPP PASSWORD, not your account password. Generate one in your provider's\naccount/security settings before continuing."
+ask_imap_password              = "IMAP password"
+
+ask_smtp_server                = "SMTP server"
+ask_smtp_port                  = "SMTP port"
+ask_smtp_same_creds            = "Use the same username/password for SMTP?"
+ask_smtp_username              = "SMTP username"
+ask_smtp_password              = "SMTP password"
+
+notify_explainer               = "This is the address where JARLIS sends recaps, stuck-pipeline alerts,\nand draft proposals (so you see them in your normal inbox). Typically\ndifferent from the source mailbox above."
+ask_notify_address             = "Notification address (where JARLIS sends emails TO YOU)"
+drafts_mode_explainer          = "When JARLIS prepares a reply for one of your emails, it can EITHER:\n  - email  : send the draft (with the original email) to your notification address\n             so it lands in your normal inbox. Reply-To points to the original\n             sender so a tap on 'Reply' opens the right window. (recommended)\n  - file   : only keep the local copy under waiting_for_approval/<slug>.md"
+ask_drafts_mode                = "Draft delivery"
+
+ai_options_hint                = "Available: claude, codex, gemini, llm"
+ask_ai_backend                 = "Which AI CLI?"
+ask_ai_model                   = "Which model? (e.g. gpt-4o-mini)"
+
+ask_backlog_days               = "How many days of email history to scan during first bootstrap?"
+
+recipient_filter_explainer     = "Many users get a lot of group / list mail (everyone CC'd, mailing lists, etc.).\nBy default JARLIS skips emails where you're not directly addressed in To: or Cc:.\nOptions:\n  all        : process everything in the inbox\n  addressed  : (default) only when you're in To: or Cc:\n  primary    : only when you're in To: (Cc: alone is skipped)\n  exclusive  : only when you're the only recipient"
+shared_addresses_explainer     = "Some organizations use shared mailbox addresses (e.g. info@org.com, bureau@org.com)\nwhere multiple members send from the same address and identify themselves in the\nbody. JARLIS will route per-person memory for these. List them comma-separated,\nor leave blank: JARLIS will also auto-detect from your email history during\nbootstrap. You can edit memory/auto_shared_addresses.txt later if needed."
+ask_shared_addresses           = "Shared mailbox addresses (comma-separated, optional)"
+ask_recipient_filter           = "Recipient filter"
+
+recap_options                  = "daily | every_n_days | weekly | monthly | custom"
+ask_frequency                  = "Frequency"
+ask_recap_time                 = "Time of day (HH:MM)"
+ask_n_days                     = "Every how many days?"
+ask_weekday                    = "Weekday"
+ask_day_of_month               = "Day of month (1-28)"
+ask_custom_cron                = "Custom cron expression"
+
+summary_config_path            = "config.toml      -> {path}"
+summary_imap_keyring           = "IMAP password    -> keyring (service: {service}, user: {user})"
+summary_smtp_keyring           = "SMTP password    -> keyring (service: {service}, user: {user})"
+ask_confirm_write              = "Looks good? Write files now?"
+aborted                        = "Aborted; nothing changed."
+
+wrote_config                   = "✓ wrote {path}"
+stored_imap_password           = "✓ stored IMAP password in keyring ({user})"
+stored_smtp_password           = "✓ stored SMTP password in keyring ({user})"
+skipped_keyring                = "⚠ skipped keyring storage; configure a plaintext password in config.toml later"
+
+ask_test_imap                  = "Test the IMAP connection now?"
+imap_test_pass                 = "✓ IMAP test passed"
+imap_test_fail                 = "✗ IMAP test FAILED: {exc}"
+imap_test_recovery             = "re-run setup or fix the keyring entry:\n  python -m jarlis.config delete-password <imap-username>\n  python -m jarlis.config set-password <imap-username>"
+ask_test_smtp                  = "Send a test notification email to verify SMTP?"
+smtp_test_pass                 = "✓ test ping sent"
+smtp_test_fail_returned_false  = "✗ test ping reported failure"
+smtp_test_fail_exc             = "✗ SMTP test FAILED: {exc}"
+
+done_header                    = "Setup complete."
+next_steps_header              = "Next steps:"
+next_step_bootstrap            = "1. python -m jarlis.bootstrap --days {days}"
+next_step_bootstrap_subtitle   = "(uses the {backend!r} CLI to seed memory from your last {days} days)"
+next_step_review               = "2. Review files under memory/, edit anything that looks wrong"
+next_step_scheduler            = "3. python -m jarlis.scheduler install"
+ai_session_hint                = "If you started this from an AI CLI session, switch back and tell\nthe agent: 'setup is done'."
+
+# Yes/no prompts
+yn_yes_aliases                 = "y, yes"
+yn_no_aliases                  = "n, no"
+yn_invalid                     = "please answer y or n"
+int_invalid                    = "please enter a number (got {raw})"
+choice_invalid                 = "pick one of: {choices}"
+
+# ---------- Error / status messages user can encounter -------------------
+
+[error]
+imap_auth          = "IMAP authentication failed. Check the username and the keyring entry."
+imap_connect       = "Could not connect to {server}:{port}. Check network and credentials."
+ai_backend_missing = "AI backend {backend!r} CLI is not on PATH. Install it or change [ai] backend."
+no_config          = "No config.toml found. Copy config.example.toml first."

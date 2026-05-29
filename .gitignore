@@ -1,0 +1,48 @@
+# JARLIS: user state never goes to git
+# These all carry real correspondence content / contact identities,
+# so leakage of any one of them would deanonymize the deployment.
+config.toml
+memory/
+email/
+waiting_for_approval/
+snoozed/
+pending_attention.md
+*.log
+.last_recap_date
+last_fetch.txt
+seen_email_ids.json
+seen_classifications.json
+email_index.json
+pipeline_health.json
+recap_task_map.json
+
+# Allow curated examples through
+!examples/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+# JARLIS — German signature closings.
+# UI strings fall back to English. Add localized UI strings here later
+# by copying keys from en.toml and translating.
+
+[signature]
+closings = [
+  "mit freundlichen grüßen",
+  "viele grüße",
+  "beste grüße",
+  "freundliche grüße",
+  "herzliche grüße",
+  "schöne grüße",
+]

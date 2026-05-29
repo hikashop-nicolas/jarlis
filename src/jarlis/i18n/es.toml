@@ -1,0 +1,13 @@
+# JARLIS — Spanish signature closings.
+# UI strings fall back to English. Add localized UI strings here later
+# by copying keys from en.toml and translating.
+
+[signature]
+closings = [
+  "atentamente",
+  "saludos",
+  "saludos cordiales",
+  "cordialmente",
+  "un saludo",
+  "muchas gracias",
+]

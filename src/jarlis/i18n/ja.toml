@@ -1,0 +1,213 @@
+# JARLIS: 日本語の文字列。
+# 未訳のキーは英語にフォールバックします。
+
+# Japanese email convention is "<name>より … <name>" rather than a
+# Western-style closing keyword + name. The Japanese-specific path is
+# implemented via regex in bootstrap.py; this section stays empty.
+# Other Western keywords (e.g. "regards") are picked up from en.toml.
+[signature]
+closings = []
+
+[drafts.notification]
+subject_prefix              = "[{org}] 下書き"
+greeting                    = "{name} さん、"
+intro                       = "{from_address} に届いたメールについて、JARLIS が返信案を作成しました。下記の提案を確認し、準備ができたら「返信」(Reply-To は元の送信者を指しています)もしくは普段使っているメールクライアントから送信してください。"
+label_original              = "元のメール"
+label_draft                 = "提案下書き"
+label_reason                = "理由"
+label_attachments           = "添付ファイル"
+label_summary               = "要約"
+label_translation_original  = "元のメールの {target_lang} 訳"
+label_translation_draft     = "提案下書きの {target_lang} 訳"
+local_path                  = "ローカルコピー: {path}"
+label_meeting               = "オンライン会議リンクを検出しました："
+meeting_when_detected       = "提案された日時：{when}"
+meeting_when_unknown        = "日時を検出できませんでした。Google カレンダーで手動で設定してください"
+calendar_link               = "Google カレンダーに追加：{url}"
+signoff                     = "JARLIS"
+
+[attention.notification]
+subject_prefix              = "[{org}] 要対応"
+intro                       = "{from_address} に届いたメールのうち、確認が必要なものを JARLIS が見つけました。下書きは作成していません。要点は以下のとおりです。返信される場合は「返信」をクリックしてください（Reply-To は元の差出人に設定されています）。"
+
+[notify.test]
+subject = "[{org}] JARLIS テスト"
+body = """{name} さん、
+
+これは JARLIS のテストメッセージです: 通知メールは正しく設定されています。
+
+, JARLIS"""
+
+[notify.stuck]
+subject = "[{org}] アラート: パイプライン停止中 ({count} 件未処理)"
+body = """{name} さん、
+
+JARLIS パイプラインが停止しているようです：{threshold} 回連続の実行で {count} 件のメールが未処理のままです。
+
+直近のバックログ履歴：{history}
+
+パイプラインログ：
+  {log_path}
+
+, JARLIS"""
+
+[recap]
+subject_daily    = "[{org}] JARLIS 要約: {date}"
+subject_period   = "[{org}] JARLIS 要約: {start} → {end}"
+no_activity      = "この期間に活動はありませんでした。"
+greeting         = "{name} さん、"
+signoff          = ", JARLIS"
+window_summary   = "期間：{start} → {end}({days} 日間)"
+no_reason        = "（理由なし）"
+drafts_location  = "下書きの保管場所：{path}"
+
+[recap.section]
+drafted          = "✏ 確認待ちの下書き ({count} 件)"
+flagged          = "📌 要確認 ({count} 件)"
+ignored          = "🔇 非表示トピック ({count} 件)"
+low_priority     = "·  低優先度 ({count} 件)"
+not_addressed    = "·  直接の宛先ではないグループメール ({count} 件)"
+old_drafts       = "⚠ 古い下書き (>{days} 日)"
+
+[recap.block]
+header              = "--- {number} ---"
+from                = "送信者  ：{name} <{email}>"
+from_multi          = "送信者  ：{names}（同じスレッドに {count} 件）"
+subject             = "件名    ：{subject}"
+date                = "日時    ：{date}"
+reason              = "理由    ：{reason}"
+reasons_header      = "理由    ：（{count} 件）"
+reason_numbered     = "  {number}. {when} — {sender}：{reason}"
+folder              = "フォルダ：{path}"
+attachments_header  = "添付ファイル（{count} 件）："
+attachment_line     = "  → {path}"
+urls_header         = "リンク（{count} 件）："
+url_line            = "  → {url}"
+url_more            = "  … 他 {count} 件のリンク"
+
+[recap.line]
+ignored_topic_header = "  📚 {topic}（{count} 件）"
+ignored_entry        = "    • {subject} — {sender}：{reason}"
+ignored_more         = "    … 他 {count} 件"
+folder               = "      → {path}"
+old_draft            = "  ⚠ {date}: 宛先：{recipient}：{subject}"
+
+[recap.thread]
+header         = "💬 スレッド：{subject}（{count} 件）"
+folders_intro  = "   このスレッドの {count} 件のメール："
+folder_line    = "     → {path}"
+
+[classify.rule]
+spam_sender    = "送信者（{sender}）はスパムと判定"
+spam_subject   = "件名にスパムマーカー：{subject}"
+ignored_topic  = "ミュート対象のテーマ：{topic}"
+no_backend     = "AI バックエンドが使えません。ユーザーが判断してください"
+
+[setup]
+title                          = "JARLIS 対話的セットアップ"
+intro                          = "JARLIS の動作に必要な情報を集めます。\nIMAP/SMTP のパスワードは OS のキーチェーンに直接保存されます。\nファイルに書き込まれることも、AI エージェントと共有されることも一切ありません。"
+
+no_keyring_warning             = "⚠ `keyring` ライブラリがインストールされていません。"
+no_keyring_needed              = "JARLIS はパスワードを安全に保存するためにこれを必要とします。"
+no_keyring_install             = "インストール:  pip install keyring"
+continue_no_keyring            = "それでも続けますか?(後でパスワードを再入力する必要があります)"
+
+section_about_you              = "--- あなたについて ---"
+section_organization           = "--- 組織 ---"
+section_imap                   = "--- IMAP(受信メール) ---"
+section_smtp                   = "--- SMTP(送信通知) ---"
+section_notifications          = "--- 通知 ---"
+section_ai                     = "--- AI バックエンド ---"
+section_bootstrap              = "--- ブートストラップ ---"
+section_recipient_filter       = "--- 受信者フィルター ---"
+section_shared_addresses       = "--- 共有メールボックス ---"
+section_recap_frequency        = "--- 要約の頻度 ---"
+section_summary                = "--- まとめ ---"
+
+ask_firstname                  = "名"
+ask_lastname                   = "姓"
+ask_firstname_alt              = "別表記の名(該当しない場合は空欄)"
+ask_lastname_alt               = "別表記の姓(該当しない場合は空欄)"
+source_vs_notify_explainer     = "JARLIS は1つのメールボックス(ソース)から読み取り、別のメールボックスへ通知を送ります。\n同じアドレスでも問題ありませんが、多くのユーザーは別にしています\n(例:ソース = 仕事用、通知 = 個人用)。ここではソースのアドレスを入力します。\n通知用のアドレスは後ほど聞きます。"
+ask_source_email               = "ソースのメールアドレス(JARLIS が読み取るメールボックス)"
+languages_explainer            = "メールを読む言語、母国語を最初に。\n最初の言語は JARLIS があなたに話す際の言語(要約、アラート)に使われます。\n下書きは受信メールの言語に合わせて作成されます(この設定とは独立)。"
+ask_languages                  = "言語(カンマ区切り。例:'ja' で日本語ネイティブ)"
+ask_aliases                    = "あなたを指す他のアドレス(カンマ区切り、任意)"
+
+ask_org_name                   = "組織名(個人なら空欄)"
+ask_org_url                    = "組織のウェブサイト(任意)"
+
+imap_provider_detected         = "{email} のプロバイダを検出しました:既定値を入力済み"
+imap_provider_note             = "注意:{hint}"
+imap_provider_unknown          = "カスタム/未知のプロバイダです。IMAP+SMTP の詳細を手動で入力してください。"
+imap_provider_examples         = "例:imap.gmail.com / outlook.office365.com / imap.fastmail.com / mail.your-host.tld"
+imap_provider_doc_hint         = "Gmail、Outlook/Microsoft 365、Fastmail、iCloud、Yahoo、ProtonMail のアプリパスワード手順は本リポジトリの PROVIDERS.md を参照してください。"
+ask_imap_server                = "IMAP サーバー"
+ask_imap_port                  = "IMAP ポート"
+ask_imap_username              = "IMAP ユーザー名"
+imap_app_password_hint         = "多くのプロバイダ(Gmail、Fastmail、iCloud、2FA 有効の Outlook など)では\nアカウントパスワードではなくアプリパスワードが必要です。\n続ける前にプロバイダのアカウント/セキュリティ設定で生成してください。"
+ask_imap_password              = "IMAP パスワード"
+
+ask_smtp_server                = "SMTP サーバー"
+ask_smtp_port                  = "SMTP ポート"
+ask_smtp_same_creds            = "SMTP も同じユーザー名/パスワードを使いますか?"
+ask_smtp_username              = "SMTP ユーザー名"
+ask_smtp_password              = "SMTP パスワード"
+
+notify_explainer               = "ここは JARLIS が要約、停止アラート、下書き提案を送るアドレスです\n(普段使っている受信ボックスに届きます)。\n通常は上記のソースメールボックスとは別のアドレスです。"
+ask_notify_address             = "通知アドレス(JARLIS があなたに送るメールの宛先)"
+drafts_mode_explainer          = "JARLIS が下書きを作成したとき、以下のいずれかで届けます:\n  - email  : 通知アドレスに下書き(原文付き)をメール送信。\n             普段の受信ボックスに届きます。Reply-To が原文の送信者になっているので\n             「返信」をタップすると正しい宛先のウィンドウが開きます。(推奨)\n  - file   : ローカルの waiting_for_approval/<slug>.md にだけ保存"
+ask_drafts_mode                = "下書きの届け方"
+
+ai_options_hint                = "利用可能:claude, codex, gemini, llm"
+ask_ai_backend                 = "どの AI CLI?"
+ask_ai_model                   = "どのモデル?(例:gpt-4o-mini)"
+
+ask_backlog_days               = "初回ブートストラップで何日分のメール履歴をスキャンしますか?"
+
+recipient_filter_explainer     = "多くのユーザーはグループ/リストメール(全員 CC、メーリングリスト等)を多く受け取ります。\n既定では JARLIS は To: または Cc: に直接入っていないメールをスキップします。\n選択肢:\n  all        : 受信ボックスのすべてを処理\n  addressed  : (既定)To: または Cc: に入っているときだけ\n  primary    : To: に入っているときだけ(Cc: のみはスキップ)\n  exclusive  : 自分が唯一の受信者のときだけ"
+shared_addresses_explainer     = "組織によっては共有メールボックス(例:info@org.com、bureau@org.com)を使い、\n複数のメンバーが同じアドレスから送信して本文で自分を名乗ります。\nJARLIS はこれらを個人ごとのメモリに振り分けます。カンマ区切りで列挙するか、\n空欄にしておけば、ブートストラップ時にメール履歴から自動検出します。\nmemory/auto_shared_addresses.txt は後から編集できます。"
+ask_shared_addresses           = "共有メールボックス(カンマ区切り、任意)"
+ask_recipient_filter           = "受信者フィルター"
+
+recap_options                  = "daily | every_n_days | weekly | monthly | custom"
+ask_frequency                  = "頻度"
+ask_recap_time                 = "時刻(HH:MM)"
+ask_n_days                     = "何日ごと?"
+ask_weekday                    = "曜日"
+ask_day_of_month               = "日(1-28)"
+ask_custom_cron                = "カスタムの cron 式"
+
+summary_config_path            = "config.toml      -> {path}"
+summary_imap_keyring           = "IMAP パスワード -> キーチェーン(service: {service}, user: {user})"
+summary_smtp_keyring           = "SMTP パスワード -> キーチェーン(service: {service}, user: {user})"
+ask_confirm_write              = "OK ですか?今ファイルを書き込みますか?"
+aborted                        = "中止しました。何も変更されていません。"
+
+wrote_config                   = "✓ {path} を書き込みました"
+stored_imap_password           = "✓ IMAP パスワードをキーチェーンに保存しました({user})"
+stored_smtp_password           = "✓ SMTP パスワードをキーチェーンに保存しました({user})"
+skipped_keyring                = "⚠ キーチェーンへの保存をスキップしました。あとで config.toml に平文でパスワードを設定してください。"
+
+ask_test_imap                  = "今すぐ IMAP 接続をテストしますか?"
+imap_test_pass                 = "✓ IMAP テスト成功"
+imap_test_fail                 = "✗ IMAP テスト失敗:{exc}"
+imap_test_recovery             = "セットアップを再実行するか、キーチェーンのエントリを修復してください:\n  python -m jarlis.config delete-password <imap-username>\n  python -m jarlis.config set-password <imap-username>"
+ask_test_smtp                  = "SMTP 確認のためテストメールを送信しますか?"
+smtp_test_pass                 = "✓ テスト ping 送信完了"
+smtp_test_fail_returned_false  = "✗ テスト ping は失敗を返しました"
+smtp_test_fail_exc             = "✗ SMTP テスト失敗:{exc}"
+
+done_header                    = "セットアップが完了しました。"
+next_steps_header              = "次のステップ:"
+next_step_bootstrap            = "1. python -m jarlis.bootstrap --days {days}"
+next_step_bootstrap_subtitle   = "({backend!r} CLI を使って、過去 {days} 日からメモリをシードします)"
+next_step_review               = "2. memory/ 以下のファイルを確認し、おかしい箇所を修正してください"
+next_step_scheduler            = "3. python -m jarlis.scheduler install"
+ai_session_hint                = "AI CLI のセッションからこのスクリプトを起動した場合、そのセッションに戻り、\n「setup is done」と伝えてください。"
+
+yn_yes_aliases                 = "y, yes, は, はい"
+yn_no_aliases                  = "n, no, いいえ"
+yn_invalid                     = "y か n で答えてください"
+int_invalid                    = "数字を入力してください(入力された値:{raw})"
+choice_invalid                 = "次から選んでください:{choices}"

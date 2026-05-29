@@ -1,0 +1,61 @@
+[project]
+name = "jarlis"
+version = "0.1.0"
+description = "Just Another Really Limited Intelligent System: IMAP-based AI email assistant"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "JARLIS contributors" }]
+keywords = ["email", "imap", "ai", "assistant", "triage"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email",
+]
+dependencies = [
+    "keyring>=24",
+    # Pure-Python language detector covering ~55 languages. Bundled so JARLIS
+    # works out of the box for any user. The voice module falls back to a
+    # built-in heuristic if the import ever fails.
+    "langdetect>=1.0",
+    # Attachment text extraction (PDF + DOCX). The AI cannot draft a sensible
+    # reply to "please review the attached file" without seeing the file's
+    # contents, so these are required, not optional.
+    "pypdf>=4.0",
+    "python-docx>=1.0",
+]
+
+[project.optional-dependencies]
+charts = [
+    "matplotlib>=3.7",
+]
+dev = [
+    "pytest>=7",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+jarlis = "jarlis.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

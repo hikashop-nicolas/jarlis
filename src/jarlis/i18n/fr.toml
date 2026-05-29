@@ -1,0 +1,241 @@
+# JARLIS: chaînes en français.
+
+[signature]
+closings = [
+  "cordialement",
+  "bien cordialement",
+  "très cordialement",
+  "tres cordialement",
+  "bien à vous",
+  "bien a vous",
+  "bien à toi",
+  "bien a toi",
+  "amicalement",
+  "salutations",
+  "meilleures salutations",
+  "à bientôt",
+  "a bientot",
+  "respectueusement",
+  "sincèrement",
+  "sincerement",
+]
+
+[drafts.notification]
+subject_prefix              = "[{org}] Brouillon pour"
+greeting                    = "Bonjour {name},"
+intro                       = "JARLIS a préparé un brouillon de réponse pour un email reçu sur {from_address}. Relis la proposition ci-dessous ; quand tu es prêt, clique sur Répondre (l'en-tête Reply-To pointe sur l'expéditeur d'origine) ou envoie-la depuis où tu réponds d'habitude."
+label_original              = "Email d'origine"
+label_draft                 = "Brouillon proposé"
+label_reason                = "Motif"
+label_attachments           = "Pièces jointes"
+label_summary               = "Résumé"
+label_translation_original  = "Email d'origine traduit en {target_lang}"
+label_translation_draft     = "Brouillon proposé traduit en {target_lang}"
+local_path                  = "Copie locale : {path}"
+label_meeting               = "Réunion en ligne détectée :"
+meeting_when_detected       = "Date/heure proposée : {when}"
+meeting_when_unknown        = "Date/heure non détectée — à compléter manuellement dans Google Agenda"
+calendar_link               = "Ajouter à Google Agenda : {url}"
+signoff                     = "JARLIS"
+
+[attention.notification]
+subject_prefix              = "[{org}] À traiter"
+intro                       = "JARLIS a repéré un email qui demande ton attention sur {from_address}. Pas de brouillon préparé ; voici l'essentiel. Clique sur Répondre (l'en-tête Reply-To pointe sur l'expéditeur d'origine) si tu veux y répondre."
+
+[notify.test]
+subject = "[{org}] Test JARLIS"
+body = """Bonjour {name},
+
+Ceci est un message de test JARLIS: ta boîte de notification est bien configurée.
+
+, JARLIS"""
+
+[notify.stuck]
+subject = "[{org}] ALERTE: Pipeline bloqué ({count} emails en attente)"
+body = """Bonjour {name},
+
+Le pipeline JARLIS semble bloqué : {count} email(s) non traité(s) depuis {threshold} exécutions consécutives.
+
+Historique récent : {history}
+
+Vérifie le log du pipeline :
+  {log_path}
+
+, JARLIS"""
+
+[recap]
+subject_daily    = "[{org}] Récap JARLIS: {date}"
+subject_period   = "[{org}] Récap JARLIS: {start} → {end}"
+no_activity      = "Aucune activité sur cette période."
+greeting         = "Bonjour {name},"
+signoff          = ", JARLIS"
+window_summary   = "Période : {start} → {end} ({days} jour(s))"
+no_reason        = "(motif non disponible)"
+drafts_location  = "Brouillons disponibles dans : {path}"
+
+[recap.section]
+drafted          = "✏ Brouillons en attente de relecture ({count})"
+flagged          = "📌 Signalés pour ton attention ({count})"
+ignored          = "🔇 Sujets en sourdine ({count})"
+low_priority     = "·  Faible priorité ({count})"
+not_addressed    = "·  Mails de groupe / listes où tu n'étais pas en destinataire direct ({count})"
+old_drafts       = "⚠ Brouillons anciens (>{days} jours)"
+
+[recap.block]
+header              = "--- {number} ---"
+from                = "De      : {name} <{email}>"
+from_multi          = "De      : {names} ({count} emails dans ce fil)"
+subject             = "Sujet   : {subject}"
+date                = "Date    : {date}"
+reason              = "Motif   : {reason}"
+reasons_header      = "Motifs  : ({count} emails)"
+reason_numbered     = "  {number}. {when} — {sender} : {reason}"
+folder              = "Dossier : {path}"
+attachments_header  = "Pièces jointes ({count}) :"
+attachment_line     = "  → {path}"
+urls_header         = "Liens ({count}) :"
+url_line            = "  → {url}"
+url_more            = "  … et {count} autre(s) lien(s)"
+
+[recap.line]
+ignored_topic_header = "  📚 {topic} ({count} email(s))"
+ignored_entry        = "    • {subject} — de {sender} : {reason}"
+ignored_more         = "    … et {count} de plus"
+folder               = "      → {path}"
+old_draft            = "  ⚠ {date}: à {recipient} : {subject}"
+
+[recap.thread]
+header         = "💬 Fil : {subject} ({count} emails)"
+folders_intro  = "   {count} email(s) dans ce fil :"
+folder_line    = "     → {path}"
+
+[classify.rule]
+spam_sender    = "expéditeur ({sender}) reconnu comme spam"
+spam_subject   = "marqueur de spam dans le sujet : {subject}"
+ignored_topic  = "thème ignoré : {topic}"
+no_backend     = "pas de moteur IA disponible ; à toi de décider"
+
+[cleanup.recap]
+subject = "[{org}] JARLIS: nettoyage hebdomadaire du {date}"
+header  = "Passe de nettoyage hebdomadaire :"
+
+[cleanup.recap.section]
+people_archived  = "Contacts archivés (aucune activité depuis {days} jours, {count})"
+topics_archived  = "Sujets archivés (aucune correspondance depuis {days} jours, {count})"
+emails_deleted   = "Anciens emails supprimés (plus vieux que {days} jours, {count})"
+drafts_pending   = "Brouillons en attente depuis plus de {days} jours ({count})"
+
+[setup]
+title                          = "Configuration interactive de JARLIS"
+intro                          = "Ce script collecte tout ce dont JARLIS a besoin.\nTon mot de passe IMAP/SMTP va directement dans le trousseau de ton OS;\nil n'est JAMAIS écrit dans un fichier ni partagé avec un agent IA."
+
+no_keyring_warning             = "⚠ La librairie `keyring` n'est pas installée."
+no_keyring_needed              = "JARLIS en a besoin pour stocker ton mot de passe en sécurité."
+no_keyring_install             = "Installation:  pip install keyring"
+continue_no_keyring            = "Continuer quand même (le mot de passe devra être re-saisi plus tard)?"
+
+section_about_you              = "--- À propos de toi ---"
+section_organization           = "--- Organisation ---"
+section_imap                   = "--- IMAP (réception d'email) ---"
+section_smtp                   = "--- SMTP (notifications sortantes) ---"
+section_notifications          = "--- Notifications ---"
+section_ai                     = "--- Backend IA ---"
+section_bootstrap              = "--- Amorçage ---"
+section_recipient_filter       = "--- Filtre destinataire ---"
+section_shared_addresses       = "--- Boîtes mails partagées ---"
+section_recap_frequency        = "--- Fréquence du récap ---"
+section_summary                = "--- Récapitulatif ---"
+
+ask_firstname                  = "Prénom"
+ask_lastname                   = "Nom"
+ask_firstname_alt              = "Prénom dans une autre écriture, optionnel (laisser vide si N/A)"
+ask_lastname_alt               = "Nom dans une autre écriture, optionnel (laisser vide si N/A)"
+source_vs_notify_explainer     = "JARLIS lit une boîte mail (la SOURCE) et envoie ses notifications dans\nune autre. Ce peut être la même adresse, mais la plupart des utilisateurs\nles séparent (ex. SOURCE = mail pro, NOTIFICATIONS = mail perso).\nL'adresse source va ici; l'adresse de notification est demandée plus bas."
+ask_source_email               = "Adresse email source (la boîte que JARLIS va LIRE)"
+languages_explainer            = "Langues dans lesquelles tu lis tes emails, ta langue NATIVE EN PREMIER.\nLa première langue est celle que JARLIS utilise pour te parler (récap, alertes).\nLes brouillons s'adaptent à la langue de l'email entrant, indépendamment de ce réglage."
+ask_languages                  = "Langues (séparées par virgule; ex. 'fr' pour français natif)"
+ask_aliases                    = "Autres adresses qui sont aussi toi (séparées par virgule, optionnel)"
+
+ask_org_name                   = "Nom de l'organisation (vide si personnel)"
+ask_org_url                    = "Site web de l'organisation (optionnel)"
+
+imap_provider_detected         = "Fournisseur détecté pour {email}: réglages pré-remplis"
+imap_provider_note             = "Note: {hint}"
+imap_provider_unknown          = "Fournisseur inconnu / personnalisé, merci d'entrer les détails IMAP+SMTP manuellement."
+imap_provider_examples         = "Exemples: imap.gmail.com / outlook.office365.com / imap.fastmail.com / mail.ton-fournisseur.tld"
+imap_provider_doc_hint         = "Voir PROVIDERS.md dans le repo pour les instructions pas-à-pas d'app-password (Gmail, Outlook/Microsoft 365, Fastmail, iCloud, Yahoo, ProtonMail)."
+ask_imap_server                = "Serveur IMAP"
+ask_imap_port                  = "Port IMAP"
+ask_imap_username              = "Identifiant IMAP"
+imap_app_password_hint         = "Beaucoup de fournisseurs (Gmail, Fastmail, iCloud, Outlook avec 2FA, ...) exigent\nun MOT DE PASSE D'APPLICATION, pas le mot de passe du compte. Génères-en un dans\nles paramètres de sécurité du compte avant de continuer."
+ask_imap_password              = "Mot de passe IMAP"
+
+ask_smtp_server                = "Serveur SMTP"
+ask_smtp_port                  = "Port SMTP"
+ask_smtp_same_creds            = "Utiliser le même identifiant/mot de passe pour SMTP?"
+ask_smtp_username              = "Identifiant SMTP"
+ask_smtp_password              = "Mot de passe SMTP"
+
+notify_explainer               = "C'est l'adresse où JARLIS envoie les récaps, les alertes de pipeline bloqué,\net les propositions de brouillons (pour qu'elles arrivent dans ta boîte habituelle).\nGénéralement différente de la boîte source ci-dessus."
+ask_notify_address             = "Adresse de notification (où JARLIS t'envoie ses emails)"
+drafts_mode_explainer          = "Quand JARLIS prépare une réponse à un de tes emails, il peut SOIT:\n  - email  : t'envoyer le brouillon (avec l'email d'origine) à ton adresse de notification\n             pour qu'il arrive dans ta boîte habituelle. Le Reply-To pointe sur l'expéditeur\n             d'origine pour qu'un clic sur 'Répondre' ouvre la bonne fenêtre. (recommandé)\n  - file   : seulement garder une copie locale dans waiting_for_approval/<slug>.md"
+ask_drafts_mode                = "Livraison des brouillons"
+
+ai_options_hint                = "Disponibles: claude, codex, gemini, llm"
+ask_ai_backend                 = "Quel CLI IA?"
+ask_ai_model                   = "Quel modèle? (ex. gpt-4o-mini)"
+
+ask_backlog_days               = "Combien de jours d'historique scanner lors du premier amorçage?"
+
+recipient_filter_explainer     = "Beaucoup d'utilisateurs reçoivent du courrier de groupe / liste (tout le monde en CC, listes de diffusion, etc.).\nPar défaut JARLIS ignore les emails où tu n'es pas directement adressé en To: ou Cc:.\nOptions:\n  all        : traiter tout ce qui arrive dans la boîte\n  addressed  : (défaut) seulement quand tu es en To: ou Cc:\n  primary    : seulement quand tu es en To: (Cc: seul ignoré)\n  exclusive  : seulement quand tu es le seul destinataire"
+shared_addresses_explainer     = "Certaines organisations utilisent des boîtes mail partagées (ex. info@org.com,\nbureau@org.com) d'où plusieurs membres envoient et s'identifient dans le corps\nde l'email. JARLIS routera la mémoire par personne pour celles-ci. Liste-les\nséparées par virgule, ou laisse vide: JARLIS les détectera aussi automatiquement\nlors de l'amorçage. Tu peux éditer memory/auto_shared_addresses.txt plus tard."
+ask_shared_addresses           = "Boîtes mail partagées (séparées par virgule, optionnel)"
+ask_recipient_filter           = "Filtre destinataire"
+
+recap_options                  = "daily | every_n_days | weekly | monthly | custom"
+ask_frequency                  = "Fréquence"
+ask_recap_time                 = "Heure (HH:MM)"
+ask_n_days                     = "Tous les combien de jours?"
+ask_weekday                    = "Jour de la semaine"
+ask_day_of_month               = "Jour du mois (1-28)"
+ask_custom_cron                = "Expression cron personnalisée"
+
+summary_config_path            = "config.toml      -> {path}"
+summary_imap_keyring           = "Mot de passe IMAP -> trousseau (service: {service}, user: {user})"
+summary_smtp_keyring           = "Mot de passe SMTP -> trousseau (service: {service}, user: {user})"
+ask_confirm_write              = "Tout est OK? Écrire les fichiers maintenant?"
+aborted                        = "Annulé; rien n'a changé."
+
+wrote_config                   = "✓ {path} écrit"
+stored_imap_password           = "✓ mot de passe IMAP stocké dans le trousseau ({user})"
+stored_smtp_password           = "✓ mot de passe SMTP stocké dans le trousseau ({user})"
+skipped_keyring                = "⚠ trousseau ignoré; configure un mot de passe en clair dans config.toml plus tard"
+
+ask_test_imap                  = "Tester la connexion IMAP maintenant?"
+imap_test_pass                 = "✓ test IMAP OK"
+imap_test_fail                 = "✗ test IMAP ÉCHEC: {exc}"
+imap_test_recovery             = "relance setup ou répare l'entrée du trousseau:\n  python -m jarlis.config delete-password <imap-username>\n  python -m jarlis.config set-password <imap-username>"
+ask_test_smtp                  = "Envoyer un email de test pour vérifier SMTP?"
+smtp_test_pass                 = "✓ ping de test envoyé"
+smtp_test_fail_returned_false  = "✗ le ping de test a signalé un échec"
+smtp_test_fail_exc             = "✗ test SMTP ÉCHEC: {exc}"
+
+done_header                    = "Configuration terminée."
+next_steps_header              = "Prochaines étapes:"
+next_step_bootstrap            = "1. python -m jarlis.bootstrap --days {days}"
+next_step_bootstrap_subtitle   = "(utilise le CLI {backend!r} pour amorcer la mémoire depuis tes {days} derniers jours)"
+next_step_review               = "2. Relis les fichiers sous memory/, corrige ce qui semble faux"
+next_step_scheduler            = "3. python -m jarlis.scheduler install"
+ai_session_hint                = "Si tu as lancé ce script depuis une session d'agent IA, retourne dans la session\nde l'agent et dis-lui: 'setup is done'."
+
+yn_yes_aliases                 = "o, oui, y, yes"
+yn_no_aliases                  = "n, non, no"
+yn_invalid                     = "merci de répondre o ou n"
+int_invalid                    = "merci d'entrer un nombre (reçu: {raw})"
+choice_invalid                 = "choisis parmi: {choices}"
+
+[error]
+imap_auth          = "Authentification IMAP échouée. Vérifie l'identifiant et l'entrée du trousseau."
+imap_connect       = "Connexion impossible à {server}:{port}. Vérifie le réseau et les identifiants."
+ai_backend_missing = "Le CLI {backend!r} n'est pas dans le PATH. Installe-le ou change [ai] backend."
+no_config          = "Aucun config.toml trouvé. Copie d'abord config.example.toml."

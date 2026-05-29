@@ -1,0 +1,151 @@
+# JARLIS configuration
+#
+# Copy this file to one of:
+#   ./config.toml                          (project-local; takes precedence)
+#   ~/.config/jarlis/config.toml           (XDG)
+#   ~/.jarlis/config.toml                  (home-directory fallback)
+#
+# Sensitive values (IMAP/SMTP passwords) should NOT live in this file.
+# Use the keyring helper:  python -m jarlis.config set-password <username>
+# If keyring is unavailable, plaintext fallback is supported but discouraged.
+
+[user]
+firstname     = "Your"
+lastname      = "Name"
+firstname_alt = ""                  # optional non-Latin variant (e.g. "タロウ")
+lastname_alt  = ""                  # optional non-Latin variant (e.g. "ヤマダ")
+email         = "you@your-org.tld"
+# Languages you read in email, native FIRST.
+# - languages[0] is JARLIS's "user-facing language" (recap subject/body, alerts,
+#   setup-wizard prose). Set this to your native language.
+# - Drafts adapt to the language of each incoming email instead, regardless of
+#   this list. JARLIS detects the email's language and replies in kind.
+languages     = ["en"]
+# Aliases / forwarders: extra addresses that still mean "this is me" for the
+# recipient_filter check below. Leave empty if you only have one address.
+email_aliases = []
+
+[organization]
+name = "Your Org"
+url  = "https://your-org.example/"
+# Optional footer appended to every AI-generated draft. Leave empty (the
+# default) when your mail client already adds a signature on send: putting
+# the footer in the draft just bloats the notification email and wastes
+# tokens. Multi-line is fine (use a TOML triple-quoted string).
+footer = ""
+
+[imap]
+# Any IMAP-capable provider works. Common settings:
+#   Gmail / Google Workspace : imap.gmail.com           : 993
+#   Outlook / Microsoft 365  : outlook.office365.com    : 993
+#   Fastmail                 : imap.fastmail.com        : 993
+#   iCloud                   : imap.mail.me.com         : 993
+#   Yahoo                    : imap.mail.yahoo.com      : 993
+#   ProtonMail (via Bridge)  : 127.0.0.1                : 1143
+#   Self-hosted / custom     : your provider's docs
+server   = "imap.gmail.com"
+port     = 993
+username = "you@your-provider.tld"
+# password = "..."                  # plaintext fallback only; prefer keyring
+
+[smtp]
+# Same providers, SMTP side. Common settings:
+#   Gmail / Google Workspace : smtp.gmail.com           : 587
+#   Outlook / Microsoft 365  : smtp.office365.com       : 587
+#   Fastmail                 : smtp.fastmail.com        : 587
+#   iCloud                   : smtp.mail.me.com         : 587
+#   Yahoo                    : smtp.mail.yahoo.com      : 587
+#   ProtonMail (via Bridge)  : 127.0.0.1                : 1025
+server = "smtp.gmail.com"
+port   = 587
+# username defaults to imap.username if blank
+# username = ""
+# password resolved like imap.password (keyring; plaintext fallback supported)
+
+[notification]
+to = "you@notification.tld"
+
+[drafts]
+# Where JARLIS leaves AI-drafted replies.
+# A local copy under waiting_for_approval/<slug>.md is ALWAYS kept (audit trail).
+# This setting only controls whether JARLIS also notifies you by email.
+#   "email" (default): send a normal email to [notification].to with the
+#                       original message + the draft. Reply-To is set to the
+#                       original sender so a tap on "Reply" goes to the
+#                       right person. You then send the real reply from
+#                       wherever you normally do (webmail, phone, etc.).
+#   "file"            : only keep the local file. No notification email.
+mode = "email"
+
+[translation]
+# When the incoming email is in a language different from your primary
+# (user.languages[0]), include a translation of the original in the
+# notification email so you can read it without leaving your inbox.
+translate_original = true
+# When the proposed draft is in a language different from your primary,
+# include a translation of the draft so you can verify what JARLIS is
+# about to suggest before approving.
+translate_draft = true
+# If the original body exceeds this many characters, also include a
+# 3-5 sentence summary in your primary language. 0 disables.
+summarize_above_chars = 4000
+# Reserved for a future release: extract text from PDF/docx attachments
+# and translate them. Not yet implemented.
+translate_attachments = false
+
+[ai]
+backend     = "claude"                  # claude | codex | gemini | llm
+# Default model used for classifier, translation, summary, and bootstrap.
+# Empty = let the CLI pick its default. For ``claude``: ``sonnet`` /
+# ``opus`` / ``haiku`` aliases or a full id like ``claude-sonnet-4-6``.
+# Required when backend = "llm" since ``llm`` has no built-in default.
+model       = ""
+# Override used ONLY when generating a draft reply (the one task where
+# output quality directly shapes what the user reads). Empty = fall back
+# to ``model`` above. Recommended: model="sonnet", model_draft="opus" —
+# saves ~80% on Opus-tier tokens vs running everything on Opus.
+model_draft = ""
+# When true (default): the AI gets a Read tool scoped to the project
+# directory. JARLIS injects short attachment previews + paths; the AI
+# fetches the full text only when needed (saves tokens). Claude is
+# constrained via --settings; Codex via its sandbox.
+# When false: no Read tool. JARLIS inlines the full extracted text of
+# every attachment in the prompt. Tighter security, larger prompts.
+use_read_tool = true
+
+[pipeline]
+max_per_run    = 10
+fetch_interval = "20m"              # cadence used by the scheduler installer
+backlog_days   = 30                 # how far back bootstrap scans on first run
+# How to treat emails where you are not directly addressed.
+#   "all"        : process every fetched email (no filter)
+#   "addressed"  : default, process only when you're in To: OR Cc:
+#                  (skips Bcc-only / mailing-list deliveries where you
+#                  weren't explicitly named)
+#   "primary"    : process only when you're in To: (Cc: alone is skipped)
+#   "exclusive"  : process only when you're the ONLY recipient
+# Skipped emails are archived with reason "not_addressed" and listed in the
+# weekly recap so you stay aware of what was filtered.
+recipient_filter = "addressed"
+# Shared-mailbox addresses where multiple people send from the same address
+# and identify themselves in the body (e.g. "<name>より … <name>"). When the
+# From: matches one of these, JARLIS extracts the name from the body and uses
+# it as the per-person memory key, so each member gets their own file.
+shared_addresses = []
+
+[recap]
+enabled       = true
+frequency     = "daily"             # daily | every_n_days | weekly | monthly | custom
+n_days        = 2                   # used when frequency = "every_n_days"
+weekday       = "fri"               # used when frequency = "weekly"  (mon..sun)
+day_of_month  = 1                   # used when frequency = "monthly"
+time          = "18:00"             # local time for the daily trigger
+custom_cron   = ""                  # power-user override; used when frequency = "custom"
+
+[cleanup]
+enabled                   = true
+people_archive_days       = 90      # archive a contact's memory file after this many days of silence
+topic_archive_days        = 60      # archive a topic file after this many days without matches
+draft_pending_days        = 14      # flag drafts older than this in the next recap
+processed_email_keep_days = 365     # 0 = keep forever; otherwise delete email bodies after this many days
+run_on_weekday            = "sun"   # weekly cleanup pass
