@@ -462,10 +462,10 @@ def _send_with_reply_to(
 
     msg = EmailMessage()
     msg["From"] = notify._from_address(cfg)
-    msg["To"] = recipient
-    msg["Subject"] = subject
+    msg["To"] = notify._sanitize_header(recipient)
+    msg["Subject"] = notify._sanitize_header(subject)
     if reply_to:
-        msg["Reply-To"] = reply_to
+        msg["Reply-To"] = notify._sanitize_header(reply_to)
     msg.set_content(body_text)
 
     log.info("draft notification: %r to %s (reply-to=%s)", subject, recipient, reply_to)

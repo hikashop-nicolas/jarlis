@@ -13,6 +13,7 @@ translated. Operator log messages stay in English.
 from __future__ import annotations
 
 import logging
+import re
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
@@ -21,6 +22,19 @@ from . import i18n
 from .config import Config
 
 log = logging.getLogger(__name__)
+
+_HEADER_NEWLINE_RE = re.compile(r"\s*[\r\n]+\s*")
+
+
+def _sanitize_header(value: str) -> str:
+    """Flatten CR/LF (and surrounding whitespace) to a single space.
+
+    EmailMessage rejects header values containing line breaks (a header
+    injection guard). IMAP subjects sometimes arrive with a folded
+    continuation that keeps its newline (e.g. "...traitement de\n paie"),
+    which would otherwise crash the send. Used for Subject/To/Reply-To.
+    """
+    return _HEADER_NEWLINE_RE.sub(" ", value or "").strip()
 
 
 def _from_address(cfg: Config) -> str:
@@ -54,8 +68,8 @@ def send_email(
 
     msg = EmailMessage()
     msg["From"] = _from_address(cfg)
-    msg["To"] = recipient
-    msg["Subject"] = subject
+    msg["To"] = _sanitize_header(recipient)
+    msg["Subject"] = _sanitize_header(subject)
     msg.set_content(body_text)
 
     log.info("smtp send: %r to %s via %s:%s", subject, recipient, cfg.smtp.server, cfg.smtp.port)

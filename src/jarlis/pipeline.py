@@ -360,7 +360,9 @@ def _route(
                 local_folder=destination,
                 attachment_paths=attachment_paths,
             )
-        except OSError as exc:
+        except Exception as exc:
+            # The email is already routed to processed/; a notification
+            # problem must never derail the pipeline or lose the message.
             log.error("attention notification failed for %s: %s", email_obj.subject, exc)
 
     return destination

@@ -165,3 +165,25 @@ def test_send_stuck_alert_includes_count_and_history(monkeypatch_storage: dict) 
             assert "/var/log/jarlis.log" in payload
     finally:
         _restore_smtp(monkeypatch_storage)
+
+
+def test_sanitize_header_flattens_folded_newlines() -> None:
+    from jarlis import notify
+    # A folded IMAP subject that previously crashed EmailMessage.
+    s = "Fwd: Formations professionnelles 2026 : confirmation du traitement de\n paie (Excel + FLE)"
+    out = notify._sanitize_header(s)
+    assert "\n" not in out and "\r" not in out
+    assert out == "Fwd: Formations professionnelles 2026 : confirmation du traitement de paie (Excel + FLE)"
+    # CRLF and surrounding whitespace collapse to a single space.
+    assert notify._sanitize_header("a\r\n\tb") == "a b"
+    assert notify._sanitize_header("  spaced  ") == "spaced"
+    assert notify._sanitize_header("") == ""
+
+
+def test_sanitized_subject_is_accepted_by_emailmessage() -> None:
+    from email.message import EmailMessage
+    from jarlis import notify
+    msg = EmailMessage()
+    # Would raise ValueError without sanitization.
+    msg["Subject"] = notify._sanitize_header("line one\nline two")
+    assert msg["Subject"] == "line one line two"
