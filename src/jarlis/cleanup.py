@@ -47,6 +47,7 @@ class CleanupReport:
     people_archived: list[str] = field(default_factory=list)      # email-slugs moved
     topics_archived: list[str] = field(default_factory=list)      # slugs moved
     bodies_deleted: list[str] = field(default_factory=list)       # folder names whose body files were stripped
+    drafts_archived: list[str] = field(default_factory=list)      # draft files moved out of the active queue
 
     def to_dict(self) -> dict:
         return {
@@ -54,6 +55,7 @@ class CleanupReport:
             "people_archived": self.people_archived,
             "topics_archived": self.topics_archived,
             "bodies_deleted": self.bodies_deleted,
+            "drafts_archived": self.drafts_archived,
         }
 
 
@@ -264,6 +266,45 @@ def _delete_old_bodies(cfg: Config, today: date) -> list[str]:
     return affected
 
 
+# ---------- 4. age out pending drafts ------------------------------------
+
+
+def _archive_old_drafts(cfg: Config, today: date) -> list[str]:
+    """Move drafts pending longer than ``draft_pending_days`` out of the queue.
+
+    Non-destructive: the markdown moves to ``waiting_for_approval/archived/``
+    as an audit trail, just out of the active queue so it stops cluttering
+    the recap's "old drafts" warning. The real send happens from the user's
+    mail client; a draft aging out only means JARLIS stops nagging about it.
+
+    Uses file mtime (same signal the recap warning uses), so what cleanup
+    archives is exactly what the recap was flagging.
+    """
+    days = cfg.cleanup.draft_pending_days
+    if not cfg.cleanup.enabled or days <= 0 or not cfg.queue_dir.exists():
+        return []
+    cutoff = datetime.now() - timedelta(days=days)
+    archive_dir = cfg.queue_dir / "archived"
+    moved: list[str] = []
+    for p in sorted(cfg.queue_dir.glob("*.md")):
+        try:
+            mtime = datetime.fromtimestamp(p.stat().st_mtime)
+        except OSError:
+            continue
+        if mtime >= cutoff:
+            continue
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        dest = archive_dir / p.name
+        if dest.exists():
+            dest.unlink()
+        try:
+            p.replace(dest)
+            moved.append(p.name)
+        except OSError as exc:
+            log.warning("could not archive draft %s: %s", p, exc)
+    return moved
+
+
 # ---------- top-level ----------------------------------------------------
 
 
@@ -277,6 +318,7 @@ def run_cleanup(cfg: Config, *, today: date | None = None) -> CleanupReport:
     report.people_archived = _age_out_people(cfg, today)
     report.topics_archived = _age_out_topics(cfg, today)
     report.bodies_deleted = _delete_old_bodies(cfg, today)
+    report.drafts_archived = _archive_old_drafts(cfg, today)
     log.info("cleanup done: %s", report.to_dict())
     return report
 

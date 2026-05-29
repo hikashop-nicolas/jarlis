@@ -211,3 +211,28 @@ def test_run_cleanup_disabled_does_nothing() -> None:
         assert report.topics_archived == []
         # File still there
         assert (cfg.memory_dir / "people" / "stale_at_x_com.md").exists()
+
+
+def test_archive_old_drafts_moves_aged_out_of_queue() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.cleanup.draft_pending_days = 14
+        cfg.queue_dir.mkdir(parents=True, exist_ok=True)
+
+        old = cfg.queue_dir / "20260508_old.md"
+        old.write_text("# Draft\nTo: a@x\nSubject: Old\n", encoding="utf-8")
+        ancient = (datetime.now() - timedelta(days=30)).timestamp()
+        os.utime(old, (ancient, ancient))
+
+        fresh = cfg.queue_dir / "20260528_fresh.md"
+        fresh.write_text("# Draft\nTo: b@x\nSubject: Fresh\n", encoding="utf-8")
+
+        report = cleanup.run_cleanup(cfg)
+
+        assert report.drafts_archived == ["20260508_old.md"]
+        # Aged draft moved into archived/, fresh one stays in the queue.
+        assert not old.exists()
+        assert (cfg.queue_dir / "archived" / "20260508_old.md").exists()
+        assert fresh.exists()
+        # Non-recursive glob means the archived draft no longer counts as active.
+        assert list(cfg.queue_dir.glob("*.md")) == [fresh]
