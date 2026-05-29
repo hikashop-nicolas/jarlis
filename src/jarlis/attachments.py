@@ -221,12 +221,22 @@ def render_for_prompt(
     return "\n\n".join(blocks)
 
 
-def render_for_notification(attachment_paths: list[Path]) -> list[str]:
+def render_for_notification(
+    attachment_paths: list[Path],
+    *,
+    translations: dict[str, str] | None = None,
+    translation_label: str = "(translation)",
+) -> list[str]:
     """Build per-attachment lines for the notification email.
 
     Returns a list of pre-formatted lines (caller joins with newline) to
-    keep formatting choices in one place.
+    keep formatting choices in one place. When ``translations`` maps an
+    attachment's path (``str(path)``) to translated text, that text is
+    appended under ``translation_label`` (truncated like the original
+    preview), so a user who prefers their own language can read the
+    attachment without opening it.
     """
+    translations = translations or {}
     out: list[str] = []
     for path in attachment_paths:
         out.append(f"  {path}")
@@ -241,4 +251,12 @@ def render_for_notification(attachment_paths: list[Path]) -> list[str]:
                 preview += "\n[... truncated by JARLIS ...]"
             for line in preview.splitlines():
                 out.append(f"      | {line}")
+        translated = translations.get(str(path))
+        if translated and translated.strip():
+            out.append(f"    -> {translation_label}")
+            tpreview = translated[:NOTIFICATION_PER_ATTACHMENT_CHARS]
+            if len(translated) > NOTIFICATION_PER_ATTACHMENT_CHARS:
+                tpreview += "\n[... truncated by JARLIS ...]"
+            for line in tpreview.splitlines():
+                out.append(f"      ~ {line}")
     return out

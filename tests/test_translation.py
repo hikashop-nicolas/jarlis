@@ -151,3 +151,44 @@ def test_maybe_translate_original_no_backend_returns_none() -> None:
         cfg = _make_cfg(Path(t))
         out = translation.maybe_translate_original(cfg, "Hi", "en", backend=None)
         assert out is None
+
+
+def test_maybe_translate_attachments_translates_foreign_only(tmp_path, monkeypatch):
+    from jarlis import translation, attachments
+    from jarlis.config import Config
+
+    cfg = Config()
+    cfg.user.languages = ["fr"]
+    cfg.translation.translate_attachments = True
+
+    ja = tmp_path / "ja.txt"
+    ja.write_text("x", encoding="utf-8")
+    (tmp_path / ("ja.txt" + attachments.EXTRACTED_SUFFIX)).write_text(
+        "これは日本語の添付ファイルです。", encoding="utf-8")
+
+    fr = tmp_path / "fr.txt"
+    fr.write_text("y", encoding="utf-8")
+    (tmp_path / ("fr.txt" + attachments.EXTRACTED_SUFFIX)).write_text(
+        "Ceci est un document en francais, deja dans la langue de l'utilisateur.", encoding="utf-8")
+
+    class StubBackend:
+        def call_text(self, prompt): return "TRADUCTION"
+        def call_json(self, prompt): return {}
+
+    out = translation.maybe_translate_attachments(cfg, [ja, fr], StubBackend())
+    # Only the Japanese attachment is translated; the French one is skipped.
+    assert out == {str(ja): "TRADUCTION"}
+
+
+def test_maybe_translate_attachments_disabled_returns_empty(tmp_path):
+    from jarlis import translation
+    from jarlis.config import Config
+    cfg = Config()
+    cfg.user.languages = ["fr"]
+    cfg.translation.translate_attachments = False
+
+    class StubBackend:
+        def call_text(self, prompt): return "X"
+        def call_json(self, prompt): return {}
+
+    assert translation.maybe_translate_attachments(cfg, [tmp_path / "z.txt"], StubBackend()) == {}

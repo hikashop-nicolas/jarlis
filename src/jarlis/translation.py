@@ -148,6 +148,39 @@ def maybe_translate_draft(
     return translate(draft_text, source_lang=draft_lang, target_lang=target, backend=backend)
 
 
+def maybe_translate_attachments(
+    cfg: Config,
+    attachment_paths: list,
+    backend: AIBackend | None,
+) -> dict[str, str]:
+    """Translate each attachment's extracted text into the user's language.
+
+    Returns ``{str(path): translated_text}`` for the attachments whose
+    extracted text is in a different language than the user's primary one.
+    No-op (empty dict) when ``[translation].translate_attachments`` is off,
+    no backend is wired, or nothing needs translating. The translated text
+    is truncated for display by the notification renderer, not here.
+    """
+    if backend is None or not cfg.translation.translate_attachments:
+        return {}
+    from . import attachments as _att, voice as _voice
+    target = (cfg.user.languages or ["en"])[0]
+    out: dict[str, str] = {}
+    for path in attachment_paths or []:
+        extracted = _att.load_extracted(path)
+        if not extracted or not extracted.strip():
+            continue
+        detected = _voice.detect_language(extracted)
+        if not detected or detected == target:
+            continue
+        translated = translate(
+            extracted, source_lang=detected, target_lang=target, backend=backend,
+        )
+        if translated:
+            out[str(path)] = translated
+    return out
+
+
 def maybe_summarize(
     cfg: Config,
     body_text: str,

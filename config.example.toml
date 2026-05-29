@@ -89,8 +89,9 @@ translate_draft = true
 # If the original body exceeds this many characters, also include a
 # 3-5 sentence summary in your primary language. 0 disables.
 summarize_above_chars = 4000
-# Reserved for a future release: extract text from PDF/docx attachments
-# and translate them. Not yet implemented.
+# Translate extracted attachment text (PDF/docx/txt) into your primary
+# language and include it (truncated) in the notification, next to the
+# file path. Costs AI quota per foreign-language attachment.
 translate_attachments = false
 
 [ai]

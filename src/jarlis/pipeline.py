@@ -334,6 +334,9 @@ def _route(
                     cfg, draft_text, draft_lang, backend,
                 )
                 summary = translation.maybe_summarize(cfg, cleaned_body, backend)
+                attachment_translations = translation.maybe_translate_attachments(
+                    cfg, attachment_paths, backend,
+                )
                 draft_path = _save_draft(cfg, email_obj, cls, draft_text)
                 draft_delivery.deliver_draft(
                     cfg, email_obj, cls, draft_text,
@@ -345,6 +348,7 @@ def _route(
                     draft_lang=draft_lang,
                     user_lang=user_lang,
                     attachment_paths=attachment_paths,
+                    attachment_translations=attachment_translations,
                 )
             except (AIError, OSError) as exc:
                 log.error("draft generation failed for %s: %s", email_obj.subject, exc)
@@ -355,10 +359,14 @@ def _route(
             attachment_paths = _attachment_paths_for(
                 cfg, email_obj, processed_folder=destination,
             )
+            attachment_translations = translation.maybe_translate_attachments(
+                cfg, attachment_paths, backend,
+            )
             draft_delivery.deliver_attention(
                 cfg, email_obj, cls,
                 local_folder=destination,
                 attachment_paths=attachment_paths,
+                attachment_translations=attachment_translations,
             )
         except Exception as exc:
             # The email is already routed to processed/; a notification

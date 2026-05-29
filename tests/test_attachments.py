@@ -161,3 +161,33 @@ def test_render_for_notification_attachment_without_extraction() -> None:
         assert any(str(att) in line for line in lines)
         # No extracted-text path line
         assert not any("extracted.txt" in line for line in lines)
+
+
+def test_render_for_notification_includes_translation_block(tmp_path):
+    from jarlis import attachments
+    att = tmp_path / "report.txt"
+    att.write_text("本文", encoding="utf-8")
+    (tmp_path / ("report.txt" + attachments.EXTRACTED_SUFFIX)).write_text(
+        "本文の抽出テキスト", encoding="utf-8",
+    )
+    lines = attachments.render_for_notification(
+        [att],
+        translations={str(att): "Texte traduit en francais."},
+        translation_label="traduction en fr",
+    )
+    blob = "\n".join(lines)
+    assert str(att) in blob                       # full path
+    assert "| 本文の抽出テキスト" in blob          # original preview
+    assert "traduction en fr" in blob             # label
+    assert "~ Texte traduit en francais." in blob  # translated preview
+
+
+def test_render_for_notification_no_translation_when_absent(tmp_path):
+    from jarlis import attachments
+    att = tmp_path / "doc.txt"
+    att.write_text("x", encoding="utf-8")
+    (tmp_path / ("doc.txt" + attachments.EXTRACTED_SUFFIX)).write_text("hello", encoding="utf-8")
+    lines = attachments.render_for_notification([att])  # no translations
+    blob = "\n".join(lines)
+    assert "~" not in blob
+    assert "traduction" not in blob

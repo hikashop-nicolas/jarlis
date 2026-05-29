@@ -45,6 +45,7 @@ def deliver_draft(
     draft_lang: str | None = None,
     user_lang: str | None = None,
     attachment_paths: list[Path] | None = None,
+    attachment_translations: dict[str, str] | None = None,
 ) -> bool:
     """Run the configured delivery step on top of the always-on local file.
 
@@ -71,6 +72,7 @@ def deliver_draft(
         draft_lang=draft_lang,
         user_lang=user_lang,
         attachment_paths=attachment_paths,
+        attachment_translations=attachment_translations,
     )
 
 
@@ -81,6 +83,7 @@ def deliver_attention(
     *,
     local_folder: Path | None = None,
     attachment_paths: list[Path] | None = None,
+    attachment_translations: dict[str, str] | None = None,
 ) -> bool:
     """Email the user about a ``flagged`` email (needs attention, no draft).
 
@@ -108,6 +111,7 @@ def deliver_attention(
         lang=lang, name=name,
         local_folder=local_folder,
         attachment_paths=attachment_paths,
+        attachment_translations=attachment_translations,
     )
     return _send_with_reply_to(
         cfg,
@@ -127,6 +131,7 @@ def _format_attention_body(
     name: str,
     local_folder: Path | None = None,
     attachment_paths: list[Path] | None = None,
+    attachment_translations: dict[str, str] | None = None,
 ) -> str:
     """Plain-text body for a flagged-email notification.
 
@@ -182,7 +187,14 @@ def _format_attention_body(
     if email_obj.attachments:
         parts.append(f"{label_attachments}:")
         if attachment_paths:
-            parts.extend(att_extract.render_for_notification(attachment_paths))
+            parts.extend(att_extract.render_for_notification(
+                attachment_paths,
+                translations=attachment_translations,
+                translation_label=i18n.t(
+                    "drafts.notification.label_attachment_translation",
+                    lang, target_lang=lang,
+                ),
+            ))
         else:
             for att_name in email_obj.attachments:
                 parts.append(f"  {att_name}")
@@ -240,6 +252,7 @@ def _send_notification(
     draft_lang: str | None,
     user_lang: str | None,
     attachment_paths: list[Path] | None = None,
+    attachment_translations: dict[str, str] | None = None,
 ) -> bool:
     """Send a normal email to ``[notification].to`` containing the draft."""
     if not cfg.notification.to:
@@ -263,6 +276,7 @@ def _send_notification(
         draft_lang=draft_lang,
         user_lang=user_lang,
         attachment_paths=attachment_paths,
+        attachment_translations=attachment_translations,
     )
 
     return _send_with_reply_to(
@@ -290,6 +304,7 @@ def _format_notification_body(
     draft_lang: str | None = None,
     user_lang: str | None = None,
     attachment_paths: list[Path] | None = None,
+    attachment_translations: dict[str, str] | None = None,
 ) -> str:
     """Build the plain-text body of the notification email.
 
@@ -379,7 +394,14 @@ def _format_notification_body(
         parts.append(f"{label_attachments}:")
         if attachment_paths:
             # Full paths + extracted-text previews so the user can open them.
-            parts.extend(att_extract.render_for_notification(attachment_paths))
+            parts.extend(att_extract.render_for_notification(
+                attachment_paths,
+                translations=attachment_translations,
+                translation_label=i18n.t(
+                    "drafts.notification.label_attachment_translation",
+                    lang, target_lang=user_lang or lang,
+                ),
+            ))
         else:
             for name in email_obj.attachments:
                 parts.append(f"  {name}")
