@@ -213,6 +213,31 @@ def test_render_includes_drafted_flagged_ignored_in_file_mode() -> None:
         assert str(cfg.queue_dir) in body
 
 
+def test_render_subject_not_clobbered_by_old_drafts() -> None:
+    """Regression: the old-drafts loop must not rebind the email subject.
+
+    A stale draft's own ``Subject:`` header was leaking out as the recap
+    email's subject line, so recaps arrived titled like a random reply.
+    """
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.queue_dir.mkdir(parents=True, exist_ok=True)
+        cfg.cleanup.draft_pending_days = 7
+        import os
+        old = cfg.queue_dir / "old_draft.md"
+        old.write_text(
+            "# Draft\nTo: bob@x\nSubject: Re: lunch plans\n", encoding="utf-8",
+        )
+        ancient = (datetime.now() - timedelta(days=30)).timestamp()
+        os.utime(old, (ancient, ancient))
+
+        content = recap.collect_recap_content(cfg)
+        assert content.old_drafts, "fixture should produce an old draft"
+        subject, body = recap.render_recap(cfg, content)
+        assert "ACME" in subject and "JARLIS" in subject
+        assert "Re: lunch plans" not in subject
+
+
 def test_normalize_thread_subject_strips_recursive_prefixes() -> None:
     norm = recap._normalize_thread_subject
     assert norm("Hello") == "hello"
@@ -536,6 +561,18 @@ def test_run_recap_updates_last_run_on_success() -> None:
     with tempfile.TemporaryDirectory() as t:
         cfg = _make_cfg(Path(t))
         cfg.recap.frequency = "daily"
-        result = recap.run_recap(cfg, sender=None)
+        # A real send advances the gating date.
+        result = recap.run_recap(cfg, sender=lambda s, b: None)
         assert result is not None
         assert recap._last_run(cfg) == date.today()
+
+
+def test_run_recap_preview_does_not_update_last_run() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.recap.frequency = "daily"
+        # A preview (sender=None) must NOT advance the gating date, or a
+        # `--print` would cause the scheduled recap to be skipped.
+        result = recap.run_recap(cfg, sender=None)
+        assert result is not None
+        assert recap._last_run(cfg) is None

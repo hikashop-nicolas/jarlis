@@ -623,14 +623,16 @@ def render_recap(
         for path, mtime in content.old_drafts:
             text = path.read_text(encoding="utf-8", errors="replace")
             recipient = _extract_field(text, "To") or "?"
-            subject = _extract_field(text, "Subject") or path.stem
+            # Local name kept distinct from the recap's ``subject`` above:
+            # reusing ``subject`` here would clobber the email's subject line.
+            draft_subject = _extract_field(text, "Subject") or path.stem
             lines.append(
                 i18n.t(
                     "recap.line.old_draft",
                     lang,
                     date=mtime.date().isoformat(),
                     recipient=recipient,
-                    subject=subject,
+                    subject=draft_subject,
                 )
             )
         lines.append("")
@@ -781,7 +783,10 @@ def run_recap(
     subject, body = render_recap(cfg, content, backend=backend)
     if sender is not None:
         sender(subject, body)
-    _save_last_run(cfg, today)
+        # Only advance the gating date on a real send. A preview
+        # (sender=None) must not mark today done, or the scheduled recap
+        # gets skipped ("not due today") after any --print.
+        _save_last_run(cfg, today)
     return subject, body
 
 

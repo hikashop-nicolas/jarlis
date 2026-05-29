@@ -131,3 +131,35 @@ def test_build_google_calendar_url_url_encodes_special_chars() -> None:
     qs = parse_qs(parts.query)
     assert qs["text"] == ["Café & croissants"]
     assert "Sometown" in qs["details"][0]
+
+
+def test_is_noise_url_flags_listserv_footer_and_signature() -> None:
+    assert url_extract.is_noise_url("https://groups.google.com/d/msgid/x/abc%40mail")
+    assert url_extract.is_noise_url("https://www.avast.com/sig-email?utm_campaign=sig-email")
+    assert url_extract.is_noise_url("https://gaggle.email/g/list/messages/x/reply")
+    assert url_extract.is_noise_url("https://list.example.com/unsubscribe")
+    # Bare homepage (scheme + host, no path/query) is footer-like noise.
+    assert url_extract.is_noise_url("https://www.asso.example/")
+    # Real content links are kept.
+    assert not url_extract.is_noise_url("https://docs.google.com/document/d/1abc/edit")
+    assert not url_extract.is_noise_url("https://meet.google.com/sdc-ipze-nzf")
+
+
+def test_filter_display_urls_drops_noise_and_caps() -> None:
+    urls = [
+        "https://docs.google.com/document/d/1abc/edit",
+        "https://groups.google.com/d/msgid/x/abc",
+        "https://www.asso.example/",
+        "https://meet.google.com/sdc-ipze-nzf",
+    ]
+    shown, hidden = url_extract.filter_display_urls(urls)
+    assert shown == [
+        "https://docs.google.com/document/d/1abc/edit",
+        "https://meet.google.com/sdc-ipze-nzf",
+    ]
+    assert hidden == 0
+    # Cap trims surplus non-noise links and reports the count.
+    many = [f"https://docs.google.com/d/{i}/edit" for i in range(12)]
+    shown, hidden = url_extract.filter_display_urls(many, limit=8)
+    assert len(shown) == 8
+    assert hidden == 4
