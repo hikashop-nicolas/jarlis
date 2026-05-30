@@ -24,12 +24,14 @@ ARCHIVE_SPAM = "spam"
 ARCHIVE_LOW_PRIORITY = "low_priority"
 ARCHIVE_RESOLVED = "resolved"
 ARCHIVE_NOT_ADDRESSED = "not_addressed"
+ARCHIVE_SELF_SENT = "self_sent"
 ARCHIVE_REASONS: tuple[str, ...] = (
     ARCHIVE_IGNORED_TOPIC,
     ARCHIVE_SPAM,
     ARCHIVE_LOW_PRIORITY,
     ARCHIVE_RESOLVED,
     ARCHIVE_NOT_ADDRESSED,
+    ARCHIVE_SELF_SENT,
 )
 
 # Classifier layers (recorded in ``Classification.layer``).

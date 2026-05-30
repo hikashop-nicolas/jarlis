@@ -40,6 +40,7 @@ from .ai import AIBackend, AIError
 from .config import Config
 from .models import (
     ARCHIVE_NOT_ADDRESSED,
+    ARCHIVE_SELF_SENT,
     ARCHIVE_SPAM,
     BUCKET_ARCHIVE,
     BUCKET_DRAFTED,
@@ -118,6 +119,20 @@ def _bare_addrs(values: list[str]) -> set[str]:
         if addr:
             out.add(addr.strip().lower())
     return out
+
+
+def _is_self_sent(cfg: Config, email_obj: Email) -> bool:
+    """True if the message was sent by the user (primary address or an alias).
+
+    Group aliases (bureau@…) echo the user's own outgoing mail back into the
+    inbox; those are sent mail, not something to notify or act on.
+    """
+    me = _user_addresses(cfg)
+    if not me:
+        return False
+    import email.utils as eu
+    _, addr = eu.parseaddr(email_obj.sender or "")
+    return addr.strip().lower() in me
 
 
 def passes_recipient_filter(cfg: Config, email_obj: Email) -> tuple[bool, str]:
@@ -222,6 +237,25 @@ def process_inbox(cfg: Config, *, backend: AIBackend | None = None) -> RunReport
             email_obj = imap_fetch.load_email_from_folder(folder)
             if email_obj is None:
                 log.warning("inbox folder %s has no meta.json; skipping", folder.name)
+                continue
+
+            # The user's own outgoing mail, echoed back via a group alias,
+            # is not something to classify, notify, or draft a reply to.
+            # Archive it silently before spending any AI call.
+            if _is_self_sent(cfg, email_obj):
+                cls = Classification(
+                    bucket=BUCKET_ARCHIVE,
+                    archive_reason=ARCHIVE_SELF_SENT,
+                    reason="sent by the user (echoed back via a group alias)",
+                    layer=LAYER_RULES,
+                    confidence=1.0,
+                )
+                cls.why_log.append(WhyLogEntry.now(LAYER_RULES, "self-sent; archived silently"))
+                classify.update_cache(cache_path, email_obj, cls)
+                destination = _route(cfg, folder, email_obj, cls, backend=None)
+                log.info("[archive/self_sent] %s -> %s", email_obj.subject[:60], destination.name)
+                report.processed += 1
+                report.archived += 1
                 continue
 
             allowed, why = passes_recipient_filter(cfg, email_obj)

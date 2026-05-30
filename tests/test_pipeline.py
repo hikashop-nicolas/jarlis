@@ -351,3 +351,24 @@ def test_recipient_filter_archives_with_not_addressed_reason() -> None:
         meta = json.loads((archived[0] / "meta.json").read_text(encoding="utf-8"))
         assert meta["classification"]["archive_reason"] == "not_addressed"
         assert list(cfg.queue_dir.glob("*.md")) == []  # no draft
+
+
+def test_self_sent_email_archived_without_classification() -> None:
+    """The user's own mail (echoed back via a group alias) is archived
+    silently before any AI call, and never notified."""
+    import json
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.user.email_aliases = ["me@asso.example"]
+        _drop_in_inbox(cfg, _build_eml(sender="me@asso.example", subject="Re: My own message"))
+        stub = _StubBackend(classifier_response={"bucket": "flagged"})
+
+        report = pipeline.process_inbox(cfg, backend=stub)
+
+        assert report.processed == 1
+        assert report.archived == 1
+        assert stub.json_calls == []  # no classification AI call spent
+        metas = list(cfg.archived_dir.rglob("meta.json"))
+        assert len(metas) == 1
+        cls = json.loads(metas[0].read_text(encoding="utf-8"))["classification"]
+        assert cls["archive_reason"] == "self_sent"

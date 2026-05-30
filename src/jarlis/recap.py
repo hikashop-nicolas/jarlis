@@ -39,6 +39,7 @@ from .models import (
     ARCHIVE_LOW_PRIORITY,
     ARCHIVE_NOT_ADDRESSED,
     ARCHIVE_RESOLVED,
+    ARCHIVE_SELF_SENT,
     BUCKET_ARCHIVE,
     BUCKET_DRAFTED,
     BUCKET_FLAGGED,
@@ -301,8 +302,9 @@ def collect_recap_content(cfg: Config, *, today: date | None = None) -> RecapCon
             content.low_priority.append(item)
         elif reason == ARCHIVE_NOT_ADDRESSED:
             content.not_addressed.append(item)
-        elif reason == ARCHIVE_RESOLVED:
-            # Silent in recap: same as spam.
+        elif reason in (ARCHIVE_RESOLVED, ARCHIVE_SELF_SENT):
+            # Silent in recap: same as spam. (Self-sent is also dropped
+            # earlier by the sender check in _items_in; kept here for safety.)
             pass
         else:
             content.low_priority.append(item)
