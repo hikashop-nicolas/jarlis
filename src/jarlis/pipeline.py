@@ -362,11 +362,26 @@ def _route(
             attachment_translations = translation.maybe_translate_attachments(
                 cfg, attachment_paths, backend,
             )
+            # Flagged mail gets no draft, so translate the body itself when
+            # it's in another language: this is the user's only rendering
+            # of the content in their own language.
+            from . import text_cleanup as _tc
+            _footers = _tc.load_footers(memory.auto_footers_path(cfg))
+            cleaned_body = _tc.clean_body(
+                email_obj.body_text or "",
+                domain_footer=_footers.get(_tc.domain_of(email_obj.sender)),
+            )
+            original_lang = voice.detect_language(cleaned_body or email_obj.subject or "")
+            original_translation = translation.maybe_translate_original(
+                cfg, cleaned_body, original_lang, backend,
+            )
             draft_delivery.deliver_attention(
                 cfg, email_obj, cls,
                 local_folder=destination,
                 attachment_paths=attachment_paths,
                 attachment_translations=attachment_translations,
+                original_translation=original_translation,
+                original_lang=original_lang,
             )
         except Exception as exc:
             # The email is already routed to processed/; a notification

@@ -84,6 +84,8 @@ def deliver_attention(
     local_folder: Path | None = None,
     attachment_paths: list[Path] | None = None,
     attachment_translations: dict[str, str] | None = None,
+    original_translation: str | None = None,
+    original_lang: str | None = None,
 ) -> bool:
     """Email the user about a ``flagged`` email (needs attention, no draft).
 
@@ -112,6 +114,8 @@ def deliver_attention(
         local_folder=local_folder,
         attachment_paths=attachment_paths,
         attachment_translations=attachment_translations,
+        original_translation=original_translation,
+        original_lang=original_lang,
     )
     return _send_with_reply_to(
         cfg,
@@ -132,12 +136,14 @@ def _format_attention_body(
     local_folder: Path | None = None,
     attachment_paths: list[Path] | None = None,
     attachment_translations: dict[str, str] | None = None,
+    original_translation: str | None = None,
+    original_lang: str | None = None,
 ) -> str:
     """Plain-text body for a flagged-email notification.
 
     Layout mirrors the draft notification (reason, original header, cleaned
-    body, meeting calendar link) but omits the proposed-reply and
-    translation sections, which don't apply to flagged mail.
+    body, body translation, meeting calendar link) but omits the
+    proposed-reply section, which doesn't apply to flagged mail.
     """
     greeting = i18n.t("drafts.notification.greeting", lang, name=name) if name else ""
     intro = i18n.t(
@@ -148,6 +154,10 @@ def _format_attention_body(
     label_original = i18n.t("drafts.notification.label_original", lang)
     label_reason = i18n.t("drafts.notification.label_reason", lang) if cls.reason else ""
     label_attachments = i18n.t("drafts.notification.label_attachments", lang)
+    label_translation_of_original = i18n.t(
+        "drafts.notification.label_translation_original",
+        lang, source_lang=original_lang or "?", target_lang=lang,
+    )
 
     sender_display = (
         f"{email_obj.sender_name} <{email_obj.sender}>"
@@ -203,6 +213,14 @@ def _format_attention_body(
     parts.append(cleaned_body or "(no readable body after stripping quotes)")
     if truncated_marker:
         parts.append(truncated_marker)
+
+    # Body translation: flagged mail gets no draft, so this is the user's
+    # only rendering of the content in their own language.
+    if original_translation:
+        parts.append("")
+        parts.append(f"--- {label_translation_of_original} ---")
+        parts.append("")
+        parts.append(original_translation.strip())
 
     # Flagged mail is often scheduling: surface a one-click calendar link.
     meeting_urls = url_extract.extract_meeting_urls(email_obj.body_text or "")
