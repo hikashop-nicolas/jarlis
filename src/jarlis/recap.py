@@ -282,8 +282,16 @@ def collect_recap_content(cfg: Config, *, today: date | None = None) -> RecapCon
                 continue
             content.flagged.append(item)
 
+    # Threads already surfaced higher up (a draft was sent, or it's flagged
+    # for attention) shouldn't reappear as separate low-priority / muted /
+    # not-addressed entries: the higher-priority entry is the one that
+    # matters, the rest of the conversation is noise. Priority order is
+    # drafted > flagged > archived; a thread shows only in its top section.
+    flagged_threads = {_normalize_thread_subject(it.subject) for it in content.flagged}
+    suppressed_threads = drafted_threads | flagged_threads
+
     for item in archived_items:
-        if _normalize_thread_subject(item.subject) in drafted_threads:
+        if _normalize_thread_subject(item.subject) in suppressed_threads:
             continue
         reason = item.classification.archive_reason
         if reason == ARCHIVE_IGNORED_TOPIC:

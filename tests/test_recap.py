@@ -576,3 +576,20 @@ def test_run_recap_preview_does_not_update_last_run() -> None:
         result = recap.run_recap(cfg, sender=None)
         assert result is not None
         assert recap._last_run(cfg) is None
+
+
+def test_flagged_thread_suppresses_archived_sibling() -> None:
+    """A thread surfaced in the flagged section must not also appear as a
+    separate low-priority entry (same conversation, lower-priority sibling)."""
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.processed_dir.mkdir(parents=True, exist_ok=True)
+        cfg.archived_dir.mkdir(parents=True, exist_ok=True)
+        _drop_processed(cfg.processed_dir, name="f1", sender="a@x",
+                        subject="Re: Projet X", bucket=BUCKET_FLAGGED)
+        _drop_processed(cfg.archived_dir, name="lp1", sender="a@x",
+                        subject="Projet X", bucket=BUCKET_ARCHIVE,
+                        archive_reason=ARCHIVE_LOW_PRIORITY)
+        content = recap.collect_recap_content(cfg)
+        assert len(content.flagged) == 1
+        assert content.low_priority == []  # suppressed: thread is flagged
