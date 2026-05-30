@@ -178,6 +178,9 @@ def maybe_translate_attachments(
         )
         if translated:
             out[str(path)] = translated
+            # Save the full translation next to the attachment so the
+            # notification can link it (the inline copy is truncated).
+            _att.save_translated(path, translated, target)
     return out
 
 

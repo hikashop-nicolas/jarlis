@@ -170,15 +170,19 @@ def test_render_for_notification_includes_translation_block(tmp_path):
     (tmp_path / ("report.txt" + attachments.EXTRACTED_SUFFIX)).write_text(
         "本文の抽出テキスト", encoding="utf-8",
     )
+    # Persist the full translation so its path can be linked.
+    tpath = attachments.save_translated(att, "Texte traduit en francais.", "fr")
     lines = attachments.render_for_notification(
         [att],
         translations={str(att): "Texte traduit en francais."},
         translation_label="traduction en fr",
+        translation_lang="fr",
     )
     blob = "\n".join(lines)
     assert str(att) in blob                       # full path
     assert "| 本文の抽出テキスト" in blob          # original preview
     assert "traduction en fr" in blob             # label
+    assert str(tpath) in blob                      # link to full translation
     assert "~ Texte traduit en francais." in blob  # translated preview
 
 

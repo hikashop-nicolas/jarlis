@@ -194,6 +194,7 @@ def _format_attention_body(
                     "drafts.notification.label_attachment_translation",
                     lang, target_lang=lang,
                 ),
+                translation_lang=lang,
             ))
         else:
             for att_name in email_obj.attachments:
@@ -401,6 +402,7 @@ def _format_notification_body(
                     "drafts.notification.label_attachment_translation",
                     lang, target_lang=user_lang or lang,
                 ),
+                translation_lang=user_lang or lang,
             ))
         else:
             for name in email_obj.attachments:

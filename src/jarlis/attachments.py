@@ -110,6 +110,32 @@ def load_extracted(att_path: Path) -> str | None:
         return None
 
 
+def translated_suffix(lang: str) -> str:
+    """Sibling suffix for a translation into ``lang`` (e.g. ``.extracted.fr.txt``)."""
+    return f".extracted.{lang}.txt"
+
+
+def translated_path(att_path: Path, lang: str) -> Path:
+    """Path of the saved translation sibling for ``att_path`` into ``lang``."""
+    return att_path.with_name(att_path.name + translated_suffix(lang))
+
+
+def save_translated(att_path: Path, text: str, lang: str) -> Path | None:
+    """Write the full translation next to the attachment; return its path.
+
+    Mirrors the ``.extracted.txt`` sibling so the notification can link the
+    complete translation (the inline copy is truncated). Returns ``None`` on
+    write failure: a missing file just means no link, never a crash.
+    """
+    p = translated_path(att_path, lang)
+    try:
+        p.write_text(text, encoding="utf-8")
+        return p
+    except OSError as exc:
+        log.warning("could not save translation for %s: %s", att_path, exc)
+        return None
+
+
 # ---------- per-format readers -------------------------------------------
 
 
@@ -226,6 +252,7 @@ def render_for_notification(
     *,
     translations: dict[str, str] | None = None,
     translation_label: str = "(translation)",
+    translation_lang: str | None = None,
 ) -> list[str]:
     """Build per-attachment lines for the notification email.
 
@@ -234,7 +261,9 @@ def render_for_notification(
     attachment's path (``str(path)``) to translated text, that text is
     appended under ``translation_label`` (truncated like the original
     preview), so a user who prefers their own language can read the
-    attachment without opening it.
+    attachment without opening it. ``translation_lang`` lets the renderer
+    link the full-translation sibling file (saved by ``save_translated``)
+    so the user can read past the inline truncation.
     """
     translations = translations or {}
     out: list[str] = []
@@ -254,6 +283,10 @@ def render_for_notification(
         translated = translations.get(str(path))
         if translated and translated.strip():
             out.append(f"    -> {translation_label}")
+            if translation_lang:
+                tpath = translated_path(path, translation_lang)
+                if tpath.exists():
+                    out.append(f"    -> {tpath}")
             tpreview = translated[:NOTIFICATION_PER_ATTACHMENT_CHARS]
             if len(translated) > NOTIFICATION_PER_ATTACHMENT_CHARS:
                 tpreview += "\n[... truncated by JARLIS ...]"
