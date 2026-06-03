@@ -27,6 +27,7 @@ import email.message
 import email.policy
 import email.utils
 import imaplib
+import html
 import json
 import logging
 import re
@@ -98,7 +99,7 @@ def extract_display_name(value: str) -> str:
 def extract_bodies(msg: email.message.Message) -> tuple[list[str], list[str]]:
     """Walk the MIME tree and return (plain_parts, html_parts)."""
     plain: list[str] = []
-    html: list[str] = []
+    html_parts: list[str] = []
 
     parts = msg.walk() if msg.is_multipart() else [msg]
     for part in parts:
@@ -119,9 +120,40 @@ def extract_bodies(msg: email.message.Message) -> tuple[list[str], list[str]]:
         if ctype == "text/plain":
             plain.append(text)
         elif ctype == "text/html":
-            html.append(text)
+            html_parts.append(text)
 
-    return plain, html
+    return plain, html_parts
+
+
+_HTML_DROP_RE = re.compile(r"(?is)<(script|style)\b.*?</\1>")
+_HTML_BREAK_RE = re.compile(r"(?i)</(p|div|li|tr|h[1-6])>|<br\s*/?>")
+
+
+def html_to_text(raw_html: str) -> str:
+    """Best-effort plain text from an HTML body.
+
+    Used as a fallback for HTML-only emails (no text/plain part): without
+    it the extracted body is empty, which produced blank notifications and
+    even mis-archiving (an email whose body looked empty read as low value).
+    """
+    if not raw_html:
+        return ""
+    s = _HTML_DROP_RE.sub(" ", raw_html)
+    s = _HTML_BREAK_RE.sub("\n", s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = html.unescape(s)
+    s = re.sub(r"[ \t ]+", " ", s)
+    s = re.sub(r"\n[ \t]*", "\n", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
+def body_text_with_fallback(plain_parts: list[str], html_parts: list[str]) -> str:
+    """Plain-text body, falling back to stripped HTML when no text/plain part."""
+    text = "\n".join(plain_parts).strip()
+    if text:
+        return text
+    return html_to_text("\n".join(html_parts))
 
 
 def extract_attachments(msg: email.message.Message) -> list[dict]:
@@ -237,6 +269,9 @@ def write_email(
         parsed_date = date_str
 
     plain_parts, html_parts = extract_bodies(msg)
+    # Plain body, falling back to stripped HTML for HTML-only emails so the
+    # classifier and notifications see real content (not an empty body).
+    text_body = body_text_with_fallback(plain_parts, html_parts)
     attachments = extract_attachments(msg)
 
     # Extract every URL in the body. Surfaced in the recap so the user
@@ -244,8 +279,7 @@ def write_email(
     # (Meet/Zoom/Teams/etc.) are also stored separately and consumed by
     # draft_delivery to build a Google Calendar "add event" link.
     from . import url_extract as _ux  # local import; keep fetch deps light
-    body_for_urls = "\n".join(plain_parts) if plain_parts else ""
-    all_urls = _ux.extract_urls(body_for_urls)
+    all_urls = _ux.extract_urls(text_body)
     meeting_urls = [u for u in all_urls if _ux.is_meeting_url(u)]
 
     meta = {
@@ -271,8 +305,8 @@ def write_email(
     (target / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    if plain_parts:
-        (target / "body.txt").write_text("\n".join(plain_parts), encoding="utf-8")
+    if text_body:
+        (target / "body.txt").write_text(text_body, encoding="utf-8")
     if html_parts:
         (target / "body.html").write_text("\n".join(html_parts), encoding="utf-8")
 
@@ -326,6 +360,10 @@ def load_email_from_folder(folder: Path) -> Email | None:
     body_text = body_path.read_text(encoding="utf-8", errors="replace") if body_path.exists() else ""
     html_path = folder / "body.html"
     body_html = html_path.read_text(encoding="utf-8", errors="replace") if html_path.exists() else None
+    # Older folders (or any saved before the HTML fallback) may have an empty
+    # body.txt while the content lives in body.html; recover the text.
+    if not body_text.strip() and body_html:
+        body_text = html_to_text(body_html)
 
     try:
         date_obj: datetime | None = datetime.fromisoformat(meta.get("date") or "")
