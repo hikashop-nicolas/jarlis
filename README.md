@@ -82,7 +82,7 @@ IMAP fetch → cascading classifier → 3-bucket triage → draft via AI CLI →
 
 ## Status
 
-Alpha. The full design is in [`PLAN.md`](PLAN.md). 130+ unit tests; end-to-end testing against a real Gmail account is each user's call.
+Alpha. The full design is in [`PLAN.md`](PLAN.md). 330+ unit tests; end-to-end testing against a real Gmail account is each user's call.
 
 ## Configuration
 
