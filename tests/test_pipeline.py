@@ -359,8 +359,8 @@ def test_self_sent_email_archived_without_classification() -> None:
     import json
     with tempfile.TemporaryDirectory() as t:
         cfg = _make_cfg(Path(t))
-        cfg.user.email_aliases = ["me@asso.example"]
-        _drop_in_inbox(cfg, _build_eml(sender="me@asso.example", subject="Re: My own message"))
+        cfg.user.email_aliases = ["me@example.org"]
+        _drop_in_inbox(cfg, _build_eml(sender="me@example.org", subject="Re: My own message"))
         stub = _StubBackend(classifier_response={"bucket": "flagged"})
 
         report = pipeline.process_inbox(cfg, backend=stub)

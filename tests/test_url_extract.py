@@ -139,7 +139,7 @@ def test_is_noise_url_flags_listserv_footer_and_signature() -> None:
     assert url_extract.is_noise_url("https://gaggle.email/g/list/messages/x/reply")
     assert url_extract.is_noise_url("https://list.example.com/unsubscribe")
     # Bare homepage (scheme + host, no path/query) is footer-like noise.
-    assert url_extract.is_noise_url("https://www.asso.example/")
+    assert url_extract.is_noise_url("https://www.example.org/")
     # Real content links are kept.
     assert not url_extract.is_noise_url("https://docs.google.com/document/d/1abc/edit")
     assert not url_extract.is_noise_url("https://meet.google.com/sdc-ipze-nzf")
@@ -149,7 +149,7 @@ def test_filter_display_urls_drops_noise_and_caps() -> None:
     urls = [
         "https://docs.google.com/document/d/1abc/edit",
         "https://groups.google.com/d/msgid/x/abc",
-        "https://www.asso.example/",
+        "https://www.example.org/",
         "https://meet.google.com/sdc-ipze-nzf",
     ]
     shown, hidden = url_extract.filter_display_urls(urls)
