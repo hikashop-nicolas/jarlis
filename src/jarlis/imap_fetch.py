@@ -413,8 +413,12 @@ def fetch_folder(
     cfg: Config,
     seen: set[str],
     max_per_run: int = 0,
-) -> tuple[int, int]:
-    """Fetch new messages from one IMAP folder. Returns ``(new_count, error_count)``.
+) -> tuple[int, int, bool]:
+    """Fetch new messages from one IMAP folder.
+
+    Returns ``(new_count, error_count, truncated)``. ``truncated`` is True
+    when ``max_per_run`` deferred messages to a later run, so the caller
+    must not advance the fetch watermark past them.
 
     ``max_per_run`` caps the number of new messages downloaded per call;
     0 = no cap.
@@ -422,18 +426,18 @@ def fetch_folder(
     status, _ = mail.select(_quote_mailbox(folder_name), readonly=True)
     if status != "OK":
         log.warning("could not select folder %s, skipping", folder_name)
-        return 0, 0
+        return 0, 0, False
 
     log.info("searching %s SINCE %s", folder_name, since_str)
     status, data = mail.search(None, f'(SINCE "{since_str}")')
     if status != "OK":
         log.error("search failed for %s: %s", folder_name, status)
-        return 0, 0
+        return 0, 0, False
 
     msg_nums = data[0].split()
     if not msg_nums:
         log.info("%s: 0 messages", folder_name)
-        return 0, 0
+        return 0, 0, False
 
     log.info("%s: %d candidate(s)", folder_name, len(msg_nums))
 
@@ -441,7 +445,7 @@ def fetch_folder(
     status, header_blocks = mail.fetch(msg_range, "(BODY[HEADER.FIELDS (DATE MESSAGE-ID)])")
     if status != "OK":
         log.error("batch header fetch failed for %s", folder_name)
-        return 0, 0
+        return 0, 0, False
 
     new_msg_nums: list[bytes] = []
     for item in header_blocks:
@@ -453,9 +457,16 @@ def fetch_folder(
         if fname not in seen:
             new_msg_nums.append(msg_num_str)
 
-    if max_per_run and len(new_msg_nums) > max_per_run:
-        new_msg_nums = new_msg_nums[-max_per_run:]
-        log.info("capping to last %d due to max_per_run", max_per_run)
+    # Drain oldest-first; defer the rest. SEARCH returns sequence numbers in
+    # ascending (arrival) order, so [:max_per_run] keeps the oldest new ones.
+    # Keeping the newest instead would silently strand older messages once the
+    # caller advances the watermark past them.
+    truncated = bool(max_per_run) and len(new_msg_nums) > max_per_run
+    if truncated:
+        deferred = len(new_msg_nums) - max_per_run
+        new_msg_nums = new_msg_nums[:max_per_run]
+        log.info("capping to first %d due to max_per_run; %d deferred to next run",
+                 max_per_run, deferred)
 
     log.info("%s: %d new message(s) to download", folder_name, len(new_msg_nums))
 
@@ -477,7 +488,7 @@ def fetch_folder(
         except Exception as exc:
             log.error("error processing %s/%s: %s", folder_name, msg_num, exc)
             error_count += 1
-    return new_count, error_count
+    return new_count, error_count, truncated
 
 
 # ---------- in-memory parsing (used by bootstrap) -------------------------
@@ -616,7 +627,7 @@ def fetch_new_emails(
 ) -> dict:
     """Top-level fetch: connect, walk folders, write emails, persist state.
 
-    Returns ``{"new": N, "errors": M, "since": "<imap-date>"}``.
+    Returns ``{"new": N, "errors": M, "since": "<imap-date>", "truncated": bool}``.
     """
     cfg.inbox_dir.mkdir(parents=True, exist_ok=True)
     cfg.attachments_dir.mkdir(parents=True, exist_ok=True)
@@ -636,18 +647,27 @@ def fetch_new_emails(
         cap = max_per_run if max_per_run is not None else cfg.pipeline.max_per_run
 
         total_new = total_err = 0
+        truncated_any = False
         for f in folders:
             try:
-                n, e = fetch_folder(mail, f, since_str, cfg=cfg, seen=seen, max_per_run=cap)
+                n, e, truncated = fetch_folder(mail, f, since_str, cfg=cfg, seen=seen, max_per_run=cap)
                 total_new += n
                 total_err += e
+                truncated_any = truncated_any or truncated
             except Exception as exc:
                 log.error("folder %s failed: %s", f, exc)
                 total_err += 1
             save_seen_ids(cfg, seen)
 
-        save_last_fetch_timestamp(cfg, fetch_started)
-        return {"new": total_new, "errors": total_err, "since": since_str}
+        # Advance the watermark only when every folder was fully drained. If the
+        # per-run cap deferred messages, leave it so the next run re-searches the
+        # same window and picks up the remainder instead of skipping past it.
+        if truncated_any:
+            log.info("per-run cap deferred messages; keeping fetch watermark for next run")
+        else:
+            save_last_fetch_timestamp(cfg, fetch_started)
+        return {"new": total_new, "errors": total_err, "since": since_str,
+                "truncated": truncated_any}
     finally:
         try:
             mail.logout()

@@ -58,6 +58,70 @@ def _drop_in_inbox(cfg: Config, raw: bytes) -> Path:
     return folder
 
 
+class _FakeIMAP:
+    """Minimal IMAP stand-in for fetch_folder: SEARCH returns every seqnum in
+    arrival order (oldest first), FETCH serves headers then RFC822."""
+
+    def __init__(self, emls: list[bytes]) -> None:
+        self.emls = emls
+
+    def select(self, mailbox, readonly=False):
+        return "OK", [b"1"]
+
+    def search(self, charset, criteria):
+        nums = " ".join(str(i + 1) for i in range(len(self.emls))).encode()
+        return "OK", [nums]
+
+    def fetch(self, msg_spec, what):
+        import email as _email
+        if "HEADER" in what:
+            blocks = []
+            for i, raw in enumerate(self.emls):
+                msg = _email.message_from_bytes(raw)
+                hdr = f"Date: {msg['Date']}\r\nMessage-ID: {msg['Message-ID']}\r\n\r\n".encode()
+                blocks.append((f"{i + 1} (BODY[HEADER])".encode(), hdr))
+            return "OK", blocks
+        num = int(msg_spec.decode() if isinstance(msg_spec, bytes) else msg_spec)
+        return "OK", [(b"x (RFC822)", self.emls[num - 1])]
+
+
+def _inbox_subjects(cfg: Config) -> set[str]:
+    subs = set()
+    for d in cfg.inbox_dir.iterdir():
+        mj = d / "meta.json"
+        if mj.exists():
+            subs.add(json.loads(mj.read_text())["subject"])
+    return subs
+
+
+def test_fetch_folder_caps_oldest_first_and_reports_truncation() -> None:
+    """When more new messages exist than max_per_run, fetch_folder must keep the
+    OLDEST ones, defer the rest, and signal truncation. A follow-up run with the
+    same `seen` set then drains the remainder, so nothing is ever skipped."""
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        emls = [
+            _build_eml(subject="m1", message_id="<m1@x>"),
+            _build_eml(subject="m2", message_id="<m2@x>"),
+            _build_eml(subject="m3", message_id="<m3@x>"),
+        ]
+        mail = _FakeIMAP(emls)
+        seen: set[str] = set()
+
+        n, e, truncated = imap_fetch.fetch_folder(
+            mail, "INBOX", "07-May-2026", cfg=cfg, seen=seen, max_per_run=2,
+        )
+        assert (n, e, truncated) == (2, 0, True)
+        # Oldest two kept; newest (m3) deferred, not the other way around.
+        assert _inbox_subjects(cfg) == {"m1", "m2"}
+
+        n2, e2, truncated2 = imap_fetch.fetch_folder(
+            mail, "INBOX", "07-May-2026", cfg=cfg, seen=seen, max_per_run=2,
+        )
+        assert (n2, e2, truncated2) == (1, 0, False)
+        assert _inbox_subjects(cfg) == {"m1", "m2", "m3"}
+
+
 class _StubBackend:
     name = "stub"
 
