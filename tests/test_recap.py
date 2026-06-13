@@ -458,10 +458,10 @@ def test_classifier_pre_translates_body_when_lang_differs() -> None:
             if "Translate the following text" in prompt:
                 return "Bonjour, je suis le corps traduit en français."
             # classification call → return JSON
-            return '{"bucket": "flagged", "archive_reason": null, "topic_slugs": [], "reason": "Test French reason."}'
+            return '{"bucket": "flagged", "archive_reason": null, "topic_slugs": [], "reason": "Réunion à confirmer, merci de votre retour rapide."}'
         def call_json(self, prompt: str) -> dict:
             calls.append(prompt)
-            return {"bucket": "flagged", "archive_reason": None, "topic_slugs": [], "reason": "Test French reason."}
+            return {"bucket": "flagged", "archive_reason": None, "topic_slugs": [], "reason": "Réunion à confirmer, merci de votre retour rapide."}
 
     e = Email(
         message_id="<m@x>", sender="alice@example.com", sender_name="Alice",
@@ -476,7 +476,7 @@ def test_classifier_pre_translates_body_when_lang_differs() -> None:
     cls_prompt = next(c for c in calls if "Translate the following text" not in c)
     assert "machine-translated" in cls_prompt
     # And the reason comes back in the user's language (per spy stub).
-    assert cls.reason == "Test French reason."
+    assert cls.reason == "Réunion à confirmer, merci de votre retour rapide."
 
 
 def test_recap_block_includes_attachment_paths() -> None:

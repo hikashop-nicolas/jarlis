@@ -341,6 +341,20 @@ def _classify_via_llm(cfg: Config, email: Email, backend: AIBackend) -> Classifi
     topic_slugs = list(raw.get("topic_slugs") or [])
     reason = (raw.get("reason") or "").strip() or "no reason provided"
 
+    # The model is told to write `reason` in the user's language but sometimes
+    # mirrors a foreign-language email; translate it back if it drifted.
+    if user_lang and (raw.get("reason") or "").strip():
+        from . import voice as _voice  # local import; circular avoidance
+        detected = _voice.detect_language(reason)
+        if detected and detected != user_lang:
+            from . import translation as _tr  # local import; circular avoidance
+            fixed = _tr.translate(
+                reason, source_lang=detected, target_lang=user_lang, backend=backend,
+            )
+            if fixed:
+                log.info("reason drifted to %s; translated back to %s", detected, user_lang)
+                reason = fixed
+
     if bucket not in (BUCKET_DRAFTED, BUCKET_FLAGGED, BUCKET_ARCHIVE):
         log.warning("LLM returned unknown bucket %r; defaulting to flagged", bucket)
         bucket = BUCKET_FLAGGED

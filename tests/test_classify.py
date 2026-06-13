@@ -179,6 +179,61 @@ def test_llm_archive_reason_only_kept_when_archive() -> None:
         assert cls.archive_reason is None  # cleared because bucket != archive
 
 
+class _LangStubBackend:
+    """call_json returns a fixed payload; call_text returns a fixed string
+    (stands in for the translation pass)."""
+
+    name = "stub"
+
+    def __init__(self, payload: dict, translation: str) -> None:
+        self.payload = payload
+        self.translation = translation
+
+    def call_text(self, prompt: str) -> str:
+        return self.translation
+
+    def call_json(self, prompt: str) -> dict:
+        return self.payload
+
+
+def test_llm_reason_in_foreign_language_translated_back_to_user_language() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.user.languages = ["fr"]
+        # Model ignored the language instruction and answered in Japanese.
+        backend = _LangStubBackend(
+            {
+                "bucket": "flagged",
+                "archive_reason": None,
+                "topic_slugs": [],
+                "reason": "会議の資料を期限までに確認するよう依頼しています。",
+            },
+            translation="Demande de verifier les documents de reunion avant la date limite.",
+        )
+        cls = classify.classify_email(cfg, _email(), backend=backend)
+        assert cls.bucket == BUCKET_FLAGGED
+        # The stored reason is the user's language, not the drifted Japanese.
+        assert cls.reason == "Demande de verifier les documents de reunion avant la date limite."
+        assert cls.why_log[-1].decision == cls.reason
+
+
+def test_llm_reason_already_in_user_language_is_not_retranslated() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.user.languages = ["fr"]
+        backend = _LangStubBackend(
+            {
+                "bucket": "flagged",
+                "archive_reason": None,
+                "topic_slugs": [],
+                "reason": "Demande de verifier le document avant son envoi.",
+            },
+            translation="SHOULD-NOT-BE-USED",
+        )
+        cls = classify.classify_email(cfg, _email(), backend=backend)
+        assert cls.reason == "Demande de verifier le document avant son envoi."
+
+
 # ---------- topic keyword matching helper --------------------------------
 
 
