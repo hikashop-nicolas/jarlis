@@ -131,6 +131,80 @@ def test_age_out_people_archives_inactive() -> None:
         assert (cfg.memory_dir / "people" / "active_at_x_com.md").exists()
 
 
+def test_age_out_people_keeps_active_contact_with_dots_in_the_address() -> None:
+    """Regression: slugging is lossy, so people aging must compare slugs.
+
+    Rebuilding an address from a slug turned ``a.b.c@x.fr`` into ``a_b_c@x.fr``,
+    which matched no sender, so every contact looked silent and got archived
+    on the first cleanup run.
+    """
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.cleanup.people_archive_days = 90
+        memory.save_person(cfg, "marie.dupont.ca@asso.example", "active contact")
+
+        recent = (date.today() - timedelta(days=3)).isoformat()
+        _drop_processed(
+            cfg.processed_dir, name="recent",
+            sender="marie.dupont.ca@asso.example", subject="hi",
+            date_iso=recent + "T10:00:00",
+        )
+
+        report = cleanup.run_cleanup(cfg)
+
+        assert report.people_archived == []
+        assert (cfg.memory_dir / "people" / "marie_dupont_ca_at_asso_example.md").exists()
+
+
+def test_age_out_people_matches_shared_mailbox_writers_by_display_name() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.cleanup.people_archive_days = 90
+        memory.save_person(cfg, "Marie Dupont", "writes from a shared address")
+
+        recent = (date.today() - timedelta(days=3)).isoformat()
+        folder = _drop_processed(
+            cfg.processed_dir, name="shared",
+            sender="bureau@asso.example", subject="hi", date_iso=recent + "T10:00:00",
+        )
+        meta_path = folder / "meta.json"
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta["sender_name"] = "Marie Dupont"
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+
+        report = cleanup.run_cleanup(cfg)
+
+        assert report.people_archived == []
+        assert (cfg.memory_dir / "people" / "marie_dupont.md").exists()
+
+
+def test_age_out_people_spares_fresh_bootstrap_contacts_with_no_history() -> None:
+    """A bootstrap writes contacts from a mailbox scan that leaves no
+    processed/ folders, so "no activity on disk" must not mean "archive"."""
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.cleanup.people_archive_days = 90
+        memory.save_person(cfg, "brand.new@x.com", "just bootstrapped")
+
+        report = cleanup.run_cleanup(cfg)
+
+        assert report.people_archived == []
+        assert (cfg.memory_dir / "people" / "brand_new_at_x_com.md").exists()
+
+
+def test_age_out_people_archives_an_old_file_with_no_history() -> None:
+    with tempfile.TemporaryDirectory() as t:
+        cfg = _make_cfg(Path(t))
+        cfg.cleanup.people_archive_days = 30
+        path = memory.save_person(cfg, "long.gone@x.com", "silent for months")
+        old = (datetime.now() - timedelta(days=200)).timestamp()
+        os.utime(path, (old, old))
+
+        report = cleanup.run_cleanup(cfg)
+
+        assert "long_gone_at_x_com" in report.people_archived
+
+
 # ---------- topics aging --------------------------------------------------
 
 

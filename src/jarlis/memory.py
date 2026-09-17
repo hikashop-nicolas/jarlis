@@ -264,7 +264,17 @@ def save_person(cfg: Config, key: str, content: str) -> Path:
 
 def archive_person(cfg: Config, email: str) -> Path | None:
     """Move ``people/<slug>.md`` into ``archive/people/``. Returns new path."""
-    src = people_dir(cfg) / f"{person_to_slug(email)}.md"
+    return archive_person_slug(cfg, person_to_slug(email))
+
+
+def archive_person_slug(cfg: Config, slug: str) -> Path | None:
+    """Archive by slug, for callers that already hold the filename stem.
+
+    Slugging is lossy (``a.b@c.com`` and ``a_b@c.com`` collide), so a caller
+    holding a slug must not try to rebuild the address to call
+    :func:`archive_person`: it would rebuild a different address.
+    """
+    src = people_dir(cfg) / f"{slug}.md"
     if not src.exists():
         return None
     dst_dir = archive_dir(cfg, "people")

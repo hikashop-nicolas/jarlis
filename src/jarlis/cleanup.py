@@ -123,59 +123,89 @@ def _reclassify_processed(cfg: Config) -> list[str]:
 # ---------- 2a. age out memory/people/ -----------------------------------
 
 
-def _latest_activity_per_sender(cfg: Config) -> dict[str, date]:
-    """Walk processed + archived to find each sender's most recent email date."""
+def _latest_activity_per_person_slug(cfg: Config) -> dict[str, date]:
+    """Walk processed + archived for each contact's most recent email date.
+
+    Keyed by memory slug rather than by address. The slug is what names the
+    memory file, and rebuilding an address from a slug is ambiguous: slugging
+    turns every dot into an underscore, so ``a.b@c.com`` and ``a_b@c.com``
+    produce the same stem. Comparing slug to slug removes the guesswork.
+
+    Shared mailboxes are keyed by the writer's display name too, since that
+    is how their per-person files are named.
+    """
     out: dict[str, date] = {}
+    for meta_path, meta in _iter_metas(cfg):
+        keys: list[str] = []
+        sender = (meta.get("sender") or "").strip().lower()
+        if sender:
+            keys.append(memory.person_to_slug(sender))
+        sender_name = (meta.get("sender_name") or "").strip()
+        if sender_name:
+            keys.append(memory.person_to_slug(sender_name))
+        if not keys:
+            continue
+        try:
+            d = date.fromisoformat((meta.get("date") or "")[:10])
+        except ValueError:
+            d = date.fromtimestamp(meta_path.stat().st_mtime)
+        for key in keys:
+            prev = out.get(key)
+            if prev is None or d > prev:
+                out[key] = d
+    return out
+
+
+def _iter_metas(cfg: Config):
+    """Yield ``(meta_path, meta_dict)`` once per processed email.
+
+    ``archived_dir`` and ``spam_dir`` live under ``processed_dir``, so a naive
+    walk of both roots parses those twice.
+    """
+    seen: set[Path] = set()
     for root in (cfg.processed_dir, cfg.archived_dir):
         if not root.exists():
             continue
         for meta_path in root.rglob("meta.json"):
+            resolved = meta_path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
             try:
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                yield meta_path, json.loads(meta_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 continue
-            sender = (meta.get("sender") or "").lower()
-            if not sender:
-                continue
-            try:
-                d = date.fromisoformat((meta.get("date") or "")[:10])
-            except ValueError:
-                d = date.fromtimestamp(meta_path.stat().st_mtime)
-            prev = out.get(sender)
-            if prev is None or d > prev:
-                out[sender] = d
-    return out
 
 
 def _age_out_people(cfg: Config, today: date) -> list[str]:
     """Move stale people files into ``memory/archive/people/``."""
     if not cfg.cleanup.enabled or cfg.cleanup.people_archive_days <= 0:
         return []
-    activity = _latest_activity_per_sender(cfg)
+    activity = _latest_activity_per_person_slug(cfg)
     cutoff = today - timedelta(days=cfg.cleanup.people_archive_days)
     archived: list[str] = []
     for slug in memory.list_people(cfg):
-        # Reverse the slug: alice_at_example_com → alice@example.com.
-        sender = _slug_to_email(slug)
-        last = activity.get(sender)
+        last = activity.get(slug)
+        if last is None:
+            # No email from this contact in JARLIS's own history. That is the
+            # normal state right after bootstrap, which writes contacts from
+            # a mailbox scan that left no processed/ folders behind. Fall back
+            # to the memory file's own age so a fresh install doesn't archive
+            # every contact on its first cleanup run.
+            last = _memory_file_date(cfg, slug)
         if last is not None and last >= cutoff:
             continue
-        # No or stale activity → archive.
-        memory.archive_person(cfg, sender)
+        memory.archive_person_slug(cfg, slug)
         archived.append(slug)
     return archived
 
 
-def _slug_to_email(slug: str) -> str:
-    # Inverse of memory.email_to_slug for the most common case.
-    s = slug.replace("_at_", "@")
-    s = s.replace("_plus_", "+")
-    # Replace remaining underscores with dots: alice@example_com → alice@example.com.
-    if "@" in s:
-        local, _, domain = s.partition("@")
-        domain = domain.replace("_", ".")
-        s = f"{local}@{domain}"
-    return s
+def _memory_file_date(cfg: Config, slug: str) -> date | None:
+    path = memory.people_dir(cfg) / f"{slug}.md"
+    try:
+        return date.fromtimestamp(path.stat().st_mtime)
+    except OSError:
+        return None
 
 
 # ---------- 2b. age out memory/topics/ -----------------------------------
@@ -184,25 +214,18 @@ def _slug_to_email(slug: str) -> str:
 def _latest_topic_match(cfg: Config) -> dict[str, date]:
     """Walk processed + archived to find the latest match per topic slug."""
     out: dict[str, date] = {}
-    for root in (cfg.processed_dir, cfg.archived_dir):
-        if not root.exists():
+    for meta_path, meta in _iter_metas(cfg):
+        slugs = (meta.get("classification") or {}).get("topic_slugs") or []
+        if not slugs:
             continue
-        for meta_path in root.rglob("meta.json"):
-            try:
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                continue
-            slugs = (meta.get("classification") or {}).get("topic_slugs") or []
-            if not slugs:
-                continue
-            try:
-                d = date.fromisoformat((meta.get("date") or "")[:10])
-            except ValueError:
-                d = date.fromtimestamp(meta_path.stat().st_mtime)
-            for slug in slugs:
-                prev = out.get(slug)
-                if prev is None or d > prev:
-                    out[slug] = d
+        try:
+            d = date.fromisoformat((meta.get("date") or "")[:10])
+        except ValueError:
+            d = date.fromtimestamp(meta_path.stat().st_mtime)
+        for slug in slugs:
+            prev = out.get(slug)
+            if prev is None or d > prev:
+                out[slug] = d
     return out
 
 
