@@ -77,6 +77,7 @@ IMAP fetch → cascading classifier → 3-bucket triage → draft via AI CLI →
 | Retrieval | structured (same-sender + thread walk + topic-tag): no embeddings in v1 |
 | i18n | TOML files per language under `src/jarlis/i18n/` (en, fr, ja shipped) |
 | Recap | daily / every_n_days / weekly / monthly / custom-cron: script self-gates |
+| Maintenance | monthly: rotates logs, prunes the classifier cache, archives old `pending_attention.md` entries, dedups attachment bytes |
 | Cleanup | weekly: ignored-topic re-classification + memory aging + old-body retention |
 | Scheduler | cross-platform: launchd / cron / Task Scheduler |
 

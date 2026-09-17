@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 PIPELINE_LABEL = "com.jarlis.pipeline"
 RECAP_LABEL = "com.jarlis.recap"
 CLEANUP_LABEL = "com.jarlis.cleanup"
+MAINTENANCE_LABEL = "com.jarlis.maintenance"
 
 WEEKDAY_NAMES: tuple[str, ...] = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -49,6 +50,7 @@ class JobSpec:
     interval_seconds: int | None = None      # for "every N seconds" jobs
     daily_at: str | None = None              # "HH:MM" for once-a-day jobs
     weekday: str | None = None               # mon..sun for weekly jobs
+    day_of_month: int | None = None          # 1..28 for monthly jobs
     custom_cron: str | None = None           # full cron spec, overrides others
 
 
@@ -60,6 +62,7 @@ class Artifacts:
     pipeline: str
     recap: str
     cleanup: str
+    maintenance: str = ""
     instructions: list[str] = field(default_factory=list)
 
 
@@ -123,7 +126,19 @@ def _build_jobs(cfg: Config) -> dict[str, JobSpec]:
         weekday=cfg.cleanup.run_on_weekday or "sun",
         daily_at=cfg.recap.time or "18:00",
     )
-    return {"pipeline": pipeline, "recap": recap, "cleanup": cleanup}
+    maintenance = JobSpec(
+        label=MAINTENANCE_LABEL,
+        description="JARLIS monthly maintenance (logs, caches, attachment dedup)",
+        args=[sys.executable, "-m", "jarlis.maintenance"],
+        daily_at=cfg.maintenance.time or "03:00",
+        day_of_month=cfg.maintenance.day_of_month or 1,
+    )
+    return {
+        "pipeline": pipeline,
+        "recap": recap,
+        "cleanup": cleanup,
+        "maintenance": maintenance,
+    }
 
 
 _INTERVAL_RE = re.compile(r"^\s*(\d+)\s*([smhd])?\s*$", re.IGNORECASE)
@@ -222,6 +237,17 @@ def _macos_plist(cfg: Config, job: JobSpec) -> str:
             "    <key>StartInterval</key>\n"
             f"    <integer>{job.interval_seconds}</integer>\n"
         )
+    elif job.day_of_month:
+        day = max(1, min(28, job.day_of_month))
+        h, m = _parse_hhmm(job.daily_at or "03:00")
+        schedule_xml = (
+            "    <key>StartCalendarInterval</key>\n"
+            "    <dict>\n"
+            f"        <key>Day</key><integer>{day}</integer>\n"
+            f"        <key>Hour</key><integer>{h}</integer>\n"
+            f"        <key>Minute</key><integer>{m}</integer>\n"
+            "    </dict>\n"
+        )
     elif job.weekday:
         weekday = _weekday_to_index(job.weekday)
         h, m = _parse_hhmm(job.daily_at or "18:00")
@@ -281,11 +307,13 @@ def _render_macos(cfg: Config, jobs: dict[str, JobSpec]) -> Artifacts:
         pipeline=_macos_plist(cfg, jobs["pipeline"]),
         recap=_macos_plist(cfg, jobs["recap"]),
         cleanup=_macos_plist(cfg, jobs["cleanup"]),
+        maintenance=_macos_plist(cfg, jobs["maintenance"]),
         instructions=[
             "After install, run:",
             f"  launchctl load -w {_macos_agent_dir() / (PIPELINE_LABEL + '.plist')}",
             f"  launchctl load -w {_macos_agent_dir() / (RECAP_LABEL + '.plist')}",
             f"  launchctl load -w {_macos_agent_dir() / (CLEANUP_LABEL + '.plist')}",
+            f"  launchctl load -w {_macos_agent_dir() / (MAINTENANCE_LABEL + '.plist')}",
         ],
     )
 
@@ -296,13 +324,14 @@ def _install_macos(cfg: Config, artifacts: Artifacts) -> None:
     (agent_dir / f"{PIPELINE_LABEL}.plist").write_text(artifacts.pipeline, encoding="utf-8")
     (agent_dir / f"{RECAP_LABEL}.plist").write_text(artifacts.recap, encoding="utf-8")
     (agent_dir / f"{CLEANUP_LABEL}.plist").write_text(artifacts.cleanup, encoding="utf-8")
-    log.info("wrote 3 plist files to %s", agent_dir)
+    (agent_dir / f"{MAINTENANCE_LABEL}.plist").write_text(artifacts.maintenance, encoding="utf-8")
+    log.info("wrote 4 plist files to %s", agent_dir)
 
 
 def _uninstall_macos() -> list[str]:
     removed: list[str] = []
     agent_dir = _macos_agent_dir()
-    for label in (PIPELINE_LABEL, RECAP_LABEL, CLEANUP_LABEL):
+    for label in (PIPELINE_LABEL, RECAP_LABEL, CLEANUP_LABEL, MAINTENANCE_LABEL):
         path = agent_dir / f"{label}.plist"
         if path.exists():
             try:
@@ -340,6 +369,9 @@ def _cron_line(cfg: Config, job: JobSpec) -> str:
     elif job.weekday:
         h, m = _parse_hhmm(job.daily_at or "18:00")
         spec = f"{m} {h} * * {_weekday_to_index(job.weekday)}"
+    elif job.day_of_month:
+        h, m = _parse_hhmm(job.daily_at or "03:00")
+        spec = f"{m} {h} {max(1, min(28, job.day_of_month))} * *"
     elif job.daily_at:
         h, m = _parse_hhmm(job.daily_at)
         spec = f"{m} {h} * * *"
@@ -355,6 +387,7 @@ def _render_linux(cfg: Config, jobs: dict[str, JobSpec]) -> Artifacts:
         pipeline=_cron_line(cfg, jobs["pipeline"]),
         recap=_cron_line(cfg, jobs["recap"]),
         cleanup=_cron_line(cfg, jobs["cleanup"]),
+        maintenance=_cron_line(cfg, jobs["maintenance"]),
         instructions=[
             "These lines will be appended to your user crontab.",
             "Existing JARLIS lines (matching '# com.jarlis.') are removed first.",
@@ -373,13 +406,13 @@ def _install_linux(cfg: Config, artifacts: Artifacts) -> None:
     existing = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     current = existing.stdout if existing.returncode == 0 else ""
     kept = [ln for ln in current.splitlines() if _CRON_MARKER not in ln]
-    new_lines = [artifacts.pipeline, artifacts.recap, artifacts.cleanup]
+    new_lines = [artifacts.pipeline, artifacts.recap, artifacts.cleanup, artifacts.maintenance]
     new_crontab = "\n".join(kept + new_lines) + "\n"
 
     proc = subprocess.run(["crontab", "-"], input=new_crontab, text=True, capture_output=True)
     if proc.returncode != 0:
         raise RuntimeError(f"crontab install failed: {proc.stderr.strip()}")
-    log.info("crontab updated with 3 JARLIS jobs")
+    log.info("crontab updated with 4 JARLIS jobs")
 
 
 def _uninstall_linux() -> list[str]:
@@ -412,6 +445,9 @@ def _schtasks_argv(cfg: Config, job: JobSpec, task_name: str) -> list[str]:
     elif job.weekday:
         h, m = _parse_hhmm(job.daily_at or "18:00")
         argv += ["/sc", "weekly", "/d", job.weekday.upper(), "/st", f"{h:02d}:{m:02d}"]
+    elif job.day_of_month:
+        h, m = _parse_hhmm(job.daily_at or "03:00")
+        argv += ["/sc", "monthly", "/d", str(max(1, min(28, job.day_of_month))), "/st", f"{h:02d}:{m:02d}"]
     elif job.daily_at:
         h, m = _parse_hhmm(job.daily_at)
         argv += ["/sc", "daily", "/st", f"{h:02d}:{m:02d}"]
@@ -437,13 +473,15 @@ def _render_windows(cfg: Config, jobs: dict[str, JobSpec]) -> Artifacts:
     pipeline_argv = _schtasks_argv(cfg, jobs["pipeline"], "JARLIS_Pipeline")
     recap_argv = _schtasks_argv(cfg, jobs["recap"], "JARLIS_Recap")
     cleanup_argv = _schtasks_argv(cfg, jobs["cleanup"], "JARLIS_Cleanup")
+    maintenance_argv = _schtasks_argv(cfg, jobs["maintenance"], "JARLIS_Maintenance")
     return Artifacts(
         platform="windows",
         pipeline=_schtasks_preview(pipeline_argv),
         recap=_schtasks_preview(recap_argv),
         cleanup=_schtasks_preview(cleanup_argv),
+        maintenance=_schtasks_preview(maintenance_argv),
         instructions=[
-            "Run the three commands below in an Administrator PowerShell.",
+            "Run the four commands below in an Administrator PowerShell.",
             "Or run install_scheduler.py with admin privileges to apply automatically.",
         ],
     )
@@ -455,17 +493,18 @@ def _install_windows(cfg: Config, artifacts: Artifacts) -> None:
         _schtasks_argv(cfg, jobs["pipeline"], "JARLIS_Pipeline"),
         _schtasks_argv(cfg, jobs["recap"], "JARLIS_Recap"),
         _schtasks_argv(cfg, jobs["cleanup"], "JARLIS_Cleanup"),
+        _schtasks_argv(cfg, jobs["maintenance"], "JARLIS_Maintenance"),
     ]
     for argv in argvs:
         proc = subprocess.run(argv, capture_output=True, text=True)
         if proc.returncode != 0:
             raise RuntimeError(f"schtasks failed for {argv!r}: {proc.stderr.strip()}")
-    log.info("3 Windows scheduled tasks installed")
+    log.info("4 Windows scheduled tasks installed")
 
 
 def _uninstall_windows() -> list[str]:
     removed: list[str] = []
-    for name in ("JARLIS_Pipeline", "JARLIS_Recap", "JARLIS_Cleanup"):
+    for name in ("JARLIS_Pipeline", "JARLIS_Recap", "JARLIS_Cleanup", "JARLIS_Maintenance"):
         proc = subprocess.run(
             ["schtasks", "/delete", "/tn", name, "/f"],
             capture_output=True, text=True,
@@ -503,6 +542,9 @@ def _cli_main(argv: list[str] | None = None) -> int:
         print()
         print("# --- cleanup ---")
         print(a.cleanup)
+        print()
+        print("# --- maintenance ---")
+        print(a.maintenance)
         if a.instructions:
             print()
             for line in a.instructions:

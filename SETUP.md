@@ -83,6 +83,7 @@ This installs three jobs on your OS scheduler:
 |---|---|---|
 | pipeline | every `[pipeline].fetch_interval` (default 20m) | fetch IMAP, classify, route, draft |
 | recap    | daily at `[recap].time`: script self-gates per `[recap].frequency` | sends recap email |
+| maintenance | monthly on `[maintenance].day_of_month` at `[maintenance].time` | rotates logs, prunes caches, dedups attachments |
 | cleanup  | weekly on `[cleanup].run_on_weekday` | ages out stale memory, deletes old bodies |
 
 To remove later: `python -m jarlis.scheduler uninstall`.

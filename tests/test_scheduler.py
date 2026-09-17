@@ -252,3 +252,66 @@ def test_render_unsupported_platform_raises(monkeypatch_storage: dict) -> None:
             raise AssertionError("expected NotImplementedError")
     finally:
         _restore_platform(monkeypatch_storage)
+
+
+# ---------- monthly maintenance job --------------------------------------
+
+
+def test_render_macos_maintenance_uses_a_day_of_month(monkeypatch_storage: dict) -> None:
+    _force_platform(monkeypatch_storage, "darwin")
+    try:
+        with tempfile.TemporaryDirectory() as t:
+            cfg = _make_cfg(Path(t))
+            cfg.maintenance.day_of_month = 3
+            cfg.maintenance.time = "03:15"
+            artifacts = scheduler.render_artifacts(cfg)
+            assert scheduler.MAINTENANCE_LABEL in artifacts.maintenance
+            assert "<key>StartCalendarInterval</key>" in artifacts.maintenance
+            assert "<key>Day</key><integer>3</integer>" in artifacts.maintenance
+            assert "<key>Hour</key><integer>3</integer>" in artifacts.maintenance
+            assert "<key>Minute</key><integer>15</integer>" in artifacts.maintenance
+            assert "jarlis.maintenance" in artifacts.maintenance
+    finally:
+        _restore_platform(monkeypatch_storage)
+
+
+def test_render_linux_maintenance_is_monthly(monkeypatch_storage: dict) -> None:
+    _force_platform(monkeypatch_storage, "linux")
+    try:
+        with tempfile.TemporaryDirectory() as t:
+            cfg = _make_cfg(Path(t))
+            cfg.maintenance.day_of_month = 1
+            cfg.maintenance.time = "03:00"
+            artifacts = scheduler.render_artifacts(cfg)
+            assert artifacts.maintenance.startswith("0 3 1 * *")
+            assert "com.jarlis.maintenance" in artifacts.maintenance
+    finally:
+        _restore_platform(monkeypatch_storage)
+
+
+def test_render_windows_maintenance_is_monthly(monkeypatch_storage: dict) -> None:
+    _force_platform(monkeypatch_storage, "win32")
+    try:
+        with tempfile.TemporaryDirectory() as t:
+            cfg = _make_cfg(Path(t))
+            cfg.maintenance.day_of_month = 2
+            cfg.maintenance.time = "04:05"
+            artifacts = scheduler.render_artifacts(cfg)
+            assert "/sc monthly" in artifacts.maintenance
+            assert "/d 2" in artifacts.maintenance
+            assert "/st 04:05" in artifacts.maintenance
+            assert "JARLIS_Maintenance" in artifacts.maintenance
+    finally:
+        _restore_platform(monkeypatch_storage)
+
+
+def test_maintenance_day_is_clamped_into_a_month_every_month_has(monkeypatch_storage: dict) -> None:
+    _force_platform(monkeypatch_storage, "linux")
+    try:
+        with tempfile.TemporaryDirectory() as t:
+            cfg = _make_cfg(Path(t))
+            cfg.maintenance.day_of_month = 31
+            artifacts = scheduler.render_artifacts(cfg)
+            assert artifacts.maintenance.startswith("0 3 28 * *")
+    finally:
+        _restore_platform(monkeypatch_storage)

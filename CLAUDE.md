@@ -116,7 +116,7 @@ Show the output to the user. Get explicit confirmation. Then:
 python -m jarlis.scheduler install
 ```
 
-Three jobs are installed: pipeline (every fetch_interval), recap (daily, self-gates per `[recap].frequency`), cleanup (weekly).
+Four jobs are installed: pipeline (every fetch_interval), recap (daily, self-gates per `[recap].frequency`), cleanup (weekly), maintenance (monthly, self-gates per `[maintenance].day_of_month`).
 
 Tell them how to undo: `python -m jarlis.scheduler uninstall`.
 
@@ -150,6 +150,8 @@ The user is back. Common requests:
 | "Re-run bootstrap" | Confirm they want to *replace* current memory, then `python -m jarlis.bootstrap --days N` |
 | "Change AI backend" | Edit `[ai].backend` in `config.toml`. If `llm`, also set `model` |
 | "Change recap frequency" | Edit `[recap]` block. No reinstall needed: the script self-gates |
+| "JARLIS's own files are huge" | `python -m jarlis.maintenance --force` (logs, classifier cache, pending_attention.md, duplicate attachments) |
+| "Two pipelines ran at once" | Expected: the newer run kills the older one and emails you. Twice in a row and it stands down instead; check `[pipeline].run_timeout` |
 
 Always read the relevant file before recommending changes; the user owns their memory tree, not you.
 
@@ -175,4 +177,6 @@ python -m jarlis.scheduler uninstall           # remove every JARLIS scheduler e
 # Maintenance
 python -m jarlis.bootstrap --days 30           # re-bootstrap from N days
 python -m jarlis.cleanup                       # run the weekly cleanup pass manually
+python -m jarlis.maintenance --force           # run the monthly housekeeping pass now
+python -m jarlis.attstore --dry-run            # report duplicate attachment bytes
 ```
