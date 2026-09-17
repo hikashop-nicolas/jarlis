@@ -316,6 +316,7 @@ def write_email(
     if attachments:
         att_dir = cfg.attachments_dir / folder_name
         att_dir.mkdir(parents=True, exist_ok=True)
+        from . import attstore
         used: set[str] = set()
         attachment_names: list[str] = []
         for att in attachments:
@@ -327,13 +328,11 @@ def write_email(
                 fname = f"{stem}_{i}.{ext}" if dot else f"{base}_{i}"
                 i += 1
             used.add(fname)
-            saved_path = att_dir / fname
-            saved_path.write_bytes(att["data"])
+            # The store owns the bytes and the extracted text; this folder
+            # gets a hard link to them, so the same document arriving twice
+            # costs one copy and one extraction.
+            attstore.save_attachment(cfg, folder_name, fname, att["data"])
             attachment_names.append(fname)
-            try:
-                att_extract.extract_and_save(saved_path)
-            except Exception as exc:
-                log.warning("attachment extract failed for %s: %s", saved_path, exc)
         meta["attachments"] = attachment_names
         # Re-write meta.json with the attachment list now resolved.
         (target / "meta.json").write_text(
