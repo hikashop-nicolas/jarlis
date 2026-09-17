@@ -800,14 +800,21 @@ def _cli_main(argv: list[str] | None = None) -> int:
     cfg = load_config()
     backend = None if args.dry_run else get_backend(cfg)
 
-    report = run_pipeline(
-        cfg,
-        backend=backend,
-        fetch=not args.process_only,
-        process=not args.fetch_only,
-        backfill_days=args.backfill,
-        max_per_run=args.max_per_run,
-    )
+    from . import runlock
+
+    timeout = runlock.parse_seconds(cfg.pipeline.run_timeout, default=0)
+    with runlock.guard(cfg, "pipeline", timeout_seconds=timeout) as decision:
+        if not decision.proceed:
+            print(json.dumps({"skipped": decision.action, "pid": decision.previous_pid}, indent=2))
+            return 0
+        report = run_pipeline(
+            cfg,
+            backend=backend,
+            fetch=not args.process_only,
+            process=not args.fetch_only,
+            backfill_days=args.backfill,
+            max_per_run=args.max_per_run,
+        )
     print(json.dumps(report.to_dict(), indent=2))
     return 0
 

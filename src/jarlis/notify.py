@@ -102,6 +102,50 @@ def send_test_ping(cfg: Config) -> bool:
     return send_email(cfg, subject, body)
 
 
+def send_overlap_alert(cfg: Config, *, decision, label: str = "pipeline") -> bool:
+    """Tell the user that two runs of ``label`` overlapped.
+
+    Two shapes: we killed the previous run and carried on, or we had already
+    killed one last time and this run stood down instead.
+    """
+    from .runlock import ABORTED
+
+    lang = (cfg.user.languages or ["en"])[0]
+    key = "notify.overlap_aborted" if decision.action == ABORTED else "notify.overlap_killed"
+    org = cfg.organization.name or "JARLIS"
+    subject = i18n.t(f"{key}.subject", lang, org=org, label=label)
+    body = i18n.t(
+        f"{key}.body",
+        lang,
+        name=cfg.user.firstname or "there",
+        label=label,
+        pid=decision.previous_pid or "?",
+        started_at=decision.previous_started_at or "?",
+        log_path=str(cfg.project_root / f"com.jarlis.{label}.log"),
+    )
+    return send_email(cfg, subject, body)
+
+
+def send_timeout_alert(cfg: Config, *, label: str = "pipeline", seconds: int) -> bool:
+    """Tell the user that a run was killed by the watchdog."""
+    lang = (cfg.user.languages or ["en"])[0]
+    subject = i18n.t(
+        "notify.timeout.subject",
+        lang,
+        org=cfg.organization.name or "JARLIS",
+        label=label,
+    )
+    body = i18n.t(
+        "notify.timeout.body",
+        lang,
+        name=cfg.user.firstname or "there",
+        label=label,
+        minutes=max(1, seconds // 60),
+        log_path=str(cfg.project_root / f"com.jarlis.{label}.log"),
+    )
+    return send_email(cfg, subject, body)
+
+
 def send_stuck_alert(
     cfg: Config,
     *,

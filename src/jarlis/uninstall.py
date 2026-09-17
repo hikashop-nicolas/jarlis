@@ -49,6 +49,9 @@ USER_DATA_ITEMS: tuple[_DataItem, ...] = (
     _DataItem("seen_classifications.json",    "classifier cache"),
     _DataItem("last_fetch.txt",               "last successful fetch timestamp"),
     _DataItem("pipeline_health.json",         "stuck-pipeline detection state"),
+    _DataItem("pending_attention_archive/",   "monthly archives of flagged-but-not-drafted notes"),
+    _DataItem(".jarlis-*.lock",               "single-instance run locks", is_glob=True),
+    _DataItem(".jarlis-*.runstate.json",      "overlap-detection state",   is_glob=True),
     _DataItem(".last_recap_date",             "recap gating state"),
     _DataItem("*.log",                        "rotating logs",   is_glob=True),
 )

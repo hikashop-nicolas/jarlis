@@ -7,7 +7,11 @@ email/
 waiting_for_approval/
 snoozed/
 pending_attention.md
+pending_attention_archive/
+.jarlis-*.lock
+.jarlis-*.runstate.json
 *.log
+*.log.*.gz
 .last_recap_date
 last_fetch.txt
 seen_email_ids.json
@@ -46,3 +50,6 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Claude rules (real names)
+CLAUDE.local.md

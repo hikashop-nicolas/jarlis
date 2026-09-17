@@ -133,6 +133,27 @@ recipient_filter = "addressed"
 # From: matches one of these, JARLIS extracts the name from the body and uses
 # it as the per-person memory key, so each member gets their own file.
 shared_addresses = []
+# Wall-clock ceiling on one pipeline run. Past it the run is killed, so a
+# hung AI CLI can't sit on the lock and block every later run. Keep it
+# under fetch_interval: a run outliving its interval is what makes two
+# runs overlap in the first place.
+run_timeout = "15m"
+
+[maintenance]
+# Monthly housekeeping of JARLIS's own files: log rotation, classifier-cache
+# pruning, pending_attention.md compaction, duplicate-attachment dedup.
+# Runs on day_of_month at the given time; the script self-gates like the recap.
+enabled                    = true
+day_of_month               = 1      # 1..28
+time                       = "03:00"
+log_max_mb                 = 5      # rotate any *.log in the project root past this
+log_keep                   = 3      # keep this many compressed generations
+pending_attention_keep_days = 60    # older entries move to pending_attention_archive/<YYYY-MM>.md; 0 disables
+prune_classification_cache = true   # drop cache entries whose email is gone from disk
+dedup_attachments          = true   # fold duplicate attachment bytes into one stored copy
+gc_attachment_store        = true   # and drop stored files nothing links to any more
+use_ai                     = true   # ask the AI CLI for a digest of each archived month
+notify                     = false  # email the maintenance report (the log always has it)
 
 [recap]
 enabled       = true

@@ -64,6 +64,49 @@ Vérifie le log du pipeline :
 
 , JARLIS"""
 
+[notify.overlap_killed]
+subject = "[{org}] {label} : exécution simultanée interrompue"
+body = """Bonjour {name},
+
+Une nouvelle exécution de {label} a démarré alors que la précédente tournait encore. JARLIS a donc arrêté l'ancienne et continué avec la nouvelle.
+
+Exécution arrêtée : pid {pid}, démarrée {started_at}
+
+Un chevauchement isolé vient en général d'un appel IA lent. Si ça se répète, c'est que l'exécution dure plus longtemps que son intervalle.
+
+Log :
+  {log_path}
+
+, JARLIS"""
+
+[notify.overlap_aborted]
+subject = "[{org}] {label} : chevauchements répétés, exécution abandonnée"
+body = """Bonjour {name},
+
+{label} s'est de nouveau chevauché juste après que JARLIS ait déjà arrêté une exécution pour la même raison. Plutôt que de tuer un processus à chaque tour, celle-ci s'est arrêtée d'elle-même et a laissé la précédente tranquille.
+
+Toujours en cours : pid {pid}, démarrée {started_at}
+
+Quelque chose bloque le job. Un coup d'oeil au log s'impose, et à un éventuel CLI IA qui ne rend pas la main.
+
+Log :
+  {log_path}
+
+, JARLIS"""
+
+[notify.timeout]
+subject = "[{org}] {label} : exécution tuée après {minutes} min"
+body = """Bonjour {name},
+
+L'exécution de {label} a dépassé sa limite de temps ({minutes} min) et a été tuée pour ne pas bloquer la suivante.
+
+Ce qu'elle traitait sera repris à la prochaine exécution.
+
+Log :
+  {log_path}
+
+, JARLIS"""
+
 [recap]
 subject_daily    = "[{org}] Récap JARLIS: {date}"
 subject_period   = "[{org}] Récap JARLIS: {start} → {end}"

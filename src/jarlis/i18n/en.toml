@@ -69,6 +69,49 @@ Pipeline log:
 
 # ---------- Recap email --------------------------------------------------
 
+[notify.overlap_killed]
+subject = "[{org}] {label}: overlapping run terminated"
+body = """Hi {name},
+
+A new {label} run started while the previous one was still going, so JARLIS terminated the old one and carried on with the new.
+
+Terminated run: pid {pid}, started {started_at}
+
+One overlap is usually a slow AI call. If it keeps happening, the run is taking longer than its scheduled interval.
+
+Log:
+  {log_path}
+
+, JARLIS"""
+
+[notify.overlap_aborted]
+subject = "[{org}] {label}: runs keep overlapping, this one stood down"
+body = """Hi {name},
+
+{label} overlapped again right after JARLIS had already terminated a run for the same reason. Rather than kill on every tick, this run stopped instead and left the previous one alone.
+
+Still running: pid {pid}, started {started_at}
+
+Something is holding the job open. Worth a look at the log, and at whether the AI CLI is hanging.
+
+Log:
+  {log_path}
+
+, JARLIS"""
+
+[notify.timeout]
+subject = "[{org}] {label}: run killed after {minutes} min"
+body = """Hi {name},
+
+The {label} run passed its time limit ({minutes} min) and was killed so it wouldn't block the next one.
+
+Whatever it was working on will be picked up again on the next run.
+
+Log:
+  {log_path}
+
+, JARLIS"""
+
 [recap]
 subject_daily    = "[{org}] JARLIS recap: {date}"
 subject_period   = "[{org}] JARLIS recap: {start} → {end}"

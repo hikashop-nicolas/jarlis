@@ -110,6 +110,10 @@ class AIConfig:
     #   - the system prompt forbids reading anything not listed in the
     #     attachment block
     use_read_tool: bool = True
+    # Hard ceiling, in seconds, on a single AI CLI call. The CLI is killed
+    # past it and the call is retried (see [ai].max_retries in ai/base.py).
+    # Raise it for slow local models; lower it to fail fast on a hung CLI.
+    timeout: int = 300
 
 
 @dataclass
@@ -132,6 +136,11 @@ class PipelineConfig:
     # uses that as the people-memory key, so each person gets their own
     # memory file even when they all send from the same shared address.
     shared_addresses: list[str] = field(default_factory=list)
+    # Wall-clock ceiling on one pipeline run ("15m", "1h", "900"). Past it the
+    # run is killed so it cannot sit on the lock and block every later run.
+    # Keep it below fetch_interval: a run that outlives its own interval is
+    # what creates overlapping runs in the first place.
+    run_timeout: str = "15m"
 
 
 @dataclass
@@ -203,6 +212,34 @@ class CleanupConfig:
 
 
 @dataclass
+class MaintenanceConfig:
+    """Monthly housekeeping of JARLIS's own files (see jarlis.maintenance)."""
+
+    enabled: bool = True
+    day_of_month: int = 1
+    time: str = "03:00"
+    # Rotate any log in the project root past this size; keep this many
+    # compressed generations.
+    log_max_mb: int = 5
+    log_keep: int = 3
+    # Move pending_attention.md entries older than this into a per-month
+    # archive file. 0 disables the compaction.
+    pending_attention_keep_days: int = 60
+    # Drop classifier-cache entries whose email is no longer on disk.
+    prune_classification_cache: bool = True
+    # Fold duplicate attachments into the content-addressed store, and drop
+    # store entries nothing links to any more.
+    dedup_attachments: bool = True
+    gc_attachment_store: bool = True
+    # Ask the AI CLI for a short digest of each month archived out of
+    # pending_attention.md. Falls back to a plain archive when unavailable.
+    use_ai: bool = True
+    # Email the maintenance report. Off by default: it is housekeeping, and
+    # the log already records it.
+    notify: bool = False
+
+
+@dataclass
 class Config:
     user: UserConfig = field(default_factory=UserConfig)
     organization: OrganizationConfig = field(default_factory=OrganizationConfig)
@@ -215,6 +252,7 @@ class Config:
     translation: TranslationConfig = field(default_factory=TranslationConfig)
     recap: RecapConfig = field(default_factory=RecapConfig)
     cleanup: CleanupConfig = field(default_factory=CleanupConfig)
+    maintenance: MaintenanceConfig = field(default_factory=MaintenanceConfig)
 
     project_root: Path = field(default_factory=Path.cwd)
     config_path: Path | None = None
@@ -231,6 +269,7 @@ class Config:
     queue_dir: Path = field(default_factory=Path)
     snoozed_dir: Path = field(default_factory=Path)
     pending_attention_path: Path = field(default_factory=Path)
+    pending_attention_archive_dir: Path = field(default_factory=Path)
 
 
 # ---------- keyring helpers -----------------------------------------------
@@ -357,6 +396,8 @@ def load_config(path: Path | str | None = None) -> Config:
         cfg.recap = RecapConfig(**data["recap"])
     if "cleanup" in data:
         cfg.cleanup = CleanupConfig(**data["cleanup"])
+    if "maintenance" in data:
+        cfg.maintenance = MaintenanceConfig(**data["maintenance"])
 
     init_paths(cfg)
     return cfg
@@ -376,6 +417,7 @@ def init_paths(cfg: Config) -> None:
     cfg.queue_dir = root / "waiting_for_approval"
     cfg.snoozed_dir = root / "snoozed"
     cfg.pending_attention_path = root / "pending_attention.md"
+    cfg.pending_attention_archive_dir = root / "pending_attention_archive"
 
 
 # ---------- CLI -----------------------------------------------------------

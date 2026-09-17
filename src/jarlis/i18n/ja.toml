@@ -52,6 +52,49 @@ JARLIS パイプラインが停止しているようです：{threshold} 回連�
 
 , JARLIS"""
 
+[notify.overlap_killed]
+subject = "[{org}] {label}: 重複実行を停止しました"
+body = """{name} さん、
+
+前回の {label} の実行が終わらないうちに新しい実行が始まったため、JARLIS は古い方を停止し、新しい方を続行しました。
+
+停止した実行：pid {pid}、開始 {started_at}
+
+一度だけの重複はたいてい AI 呼び出しの遅延が原因です。繰り返す場合は、実行時間が実行間隔を超えています。
+
+ログ：
+  {log_path}
+
+, JARLIS"""
+
+[notify.overlap_aborted]
+subject = "[{org}] {label}: 重複が続くため今回の実行を中止しました"
+body = """{name} さん、
+
+同じ理由で実行を停止した直後に、{label} がふたたび重複しました。毎回プロセスを停止するのを避けるため、今回の実行は自ら中止し、前の実行はそのままにしています。
+
+実行中：pid {pid}、開始 {started_at}
+
+ジョブが終了できない状態です。ログと、AI CLI が応答しているかの確認をおすすめします。
+
+ログ：
+  {log_path}
+
+, JARLIS"""
+
+[notify.timeout]
+subject = "[{org}] {label}: {minutes} 分で強制終了しました"
+body = """{name} さん、
+
+{label} の実行が制限時間（{minutes} 分）を超えたため、次の実行を妨げないように強制終了しました。
+
+処理中だった内容は次回の実行で再開されます。
+
+ログ：
+  {log_path}
+
+, JARLIS"""
+
 [recap]
 subject_daily    = "[{org}] JARLIS 要約: {date}"
 subject_period   = "[{org}] JARLIS 要約: {start} → {end}"

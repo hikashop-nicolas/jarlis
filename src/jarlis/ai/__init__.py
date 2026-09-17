@@ -69,6 +69,8 @@ def get_backend(cfg, *, task: str | None = None, **overrides):
         overrides["use_read_tool"] = cfg.ai.use_read_tool
     if "model" not in overrides:
         overrides["model"] = _resolve_model(cfg, task) or None
+    if "timeout" not in overrides:
+        overrides["timeout"] = getattr(cfg.ai, "timeout", 300)
     # Backends without Read-tool semantics ignore the flag.
     if name == "claude":
         return ClaudeBackend(**overrides)
